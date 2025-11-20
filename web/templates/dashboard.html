@@ -1,8 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
     <title>{{.title}}</title>
     <style>
         * {
@@ -28,7 +32,7 @@
             border-radius: 10px;
             padding: 20px;
             margin-bottom: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
         .header h1 {
@@ -70,7 +74,7 @@
             background: white;
             border-radius: 10px;
             padding: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
         .card h2 {
@@ -169,14 +173,170 @@
             border-radius: 5px;
             margin-bottom: 15px;
         }
+
+        .config-section {
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: #374151;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-control:disabled {
+            background-color: #f9fafb;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .provider-tiles {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .provider-tile {
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+        }
+
+        .provider-tile:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .provider-tile.active {
+            border-color: #10b981;
+            background: #f0fdf4;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .provider-tile.default {
+            border-color: #f59e0b;
+            background: #fffbeb;
+        }
+
+        .provider-name {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 8px;
+        }
+
+        .provider-models {
+            font-size: 0.9em;
+            color: #6b7280;
+            margin-bottom: 10px;
+        }
+
+        .provider-status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 500;
+            margin-bottom: 10px;
+        }
+
+        .provider-status.enabled {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .provider-status.disabled {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .provider-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .tile-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.8em;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .tile-btn.set-default {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .tile-btn.set-default:hover {
+            background: #d97706;
+        }
+
+        .tile-btn.fetch-models {
+            background: #6b7280;
+            color: white;
+        }
+
+        .tile-btn.fetch-models:hover {
+            background: #4b5563;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a67d8;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="header">
             <h1>🎯 Tingly Box Dashboard</h1>
             <div class="nav">
-                <a href="/ui/" class="active">Dashboard</a>
+                <a
+                    href="/ui/"
+                    class="active"
+                >Dashboard</a>
                 <a href="/ui/providers">Providers</a>
                 <a href="/ui/server">Server</a>
                 <a href="/ui/history">History</a>
@@ -184,23 +344,100 @@
         </div>
 
         <div class="grid">
+            <!-- Default Model Card -->
+            <div class="card">
+                <h2>🎯 Default Model Configuration</h2>
+                <div class="config-section">
+                    <div class="form-group">
+                        <label for="defaultModelName">Default Model Name</label>
+                        <input
+                            type="text"
+                            id="defaultModelName"
+                            class="form-control"
+                            placeholder="tingly"
+                            value="tingly"
+                        >
+                        <small style="color: #666; margin-top: 5px; display: block;">When requests use this model name,
+                            the default provider and model will be used</small>
+                    </div>
+                </div>
+                <div class="config-section">
+                    <div class="form-group">
+                        <label for="defaultProviderSelect">Default Provider</label>
+                        <select
+                            id="defaultProviderSelect"
+                            class="form-control"
+                        >
+                            <option value="">Select a provider</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="defaultModelSelect">Default Model</label>
+                        <select
+                            id="defaultModelSelect"
+                            class="form-control"
+                            disabled
+                        >
+                            <option value="">Select a provider first</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="btn-group">
+                    <button
+                        id="saveDefaultsBtn"
+                        class="btn btn-primary"
+                    >Save Defaults</button>
+                    <button
+                        id="refreshModelsBtn"
+                        class="btn btn-secondary"
+                    >Refresh Models</button>
+                </div>
+            </div>
+
+            <!-- Provider Selection Card -->
+            <div class="card">
+                <h2>⚡ Quick Provider Selection</h2>
+                <div
+                    id="providerSelectionPanel"
+                    class="loading"
+                >Loading providers...</div>
+            </div>
+
             <!-- Server Status Card -->
             <div class="card">
                 <h2>📊 Server Status</h2>
-                <div id="serverStatus" class="loading">Loading...</div>
+                <div
+                    id="serverStatus"
+                    class="loading"
+                >Loading...</div>
                 <div class="btn-group">
-                    <button id="startBtn" class="btn btn-success">Start</button>
-                    <button id="stopBtn" class="btn btn-danger">Stop</button>
-                    <button id="restartBtn" class="btn">Restart</button>
+                    <button
+                        id="startBtn"
+                        class="btn btn-success"
+                    >Start</button>
+                    <button
+                        id="stopBtn"
+                        class="btn btn-danger"
+                    >Stop</button>
+                    <button
+                        id="restartBtn"
+                        class="btn"
+                    >Restart</button>
                 </div>
             </div>
 
             <!-- Providers Card -->
             <div class="card">
                 <h2>👥 Providers</h2>
-                <div id="providersStatus" class="loading">Loading...</div>
+                <div
+                    id="providersStatus"
+                    class="loading"
+                >Loading...</div>
                 <div class="btn-group">
-                    <button onclick="location.href='/ui/providers'" class="btn">Manage Providers</button>
+                    <button
+                        onclick="location.href='/ui/providers'"
+                        class="btn"
+                    >Manage Providers</button>
                 </div>
             </div>
 
@@ -209,29 +446,50 @@
                 <h2>🔑 Authentication</h2>
                 <p style="margin-bottom: 15px; color: #666;">Generate JWT token for API access</p>
                 <div class="btn-group">
-                    <button id="generateTokenBtn" class="btn">Generate Token</button>
+                    <button
+                        id="generateTokenBtn"
+                        class="btn"
+                    >Generate Token</button>
                 </div>
-                <div id="tokenResult" style="margin-top: 15px; display: none;">
-                    <textarea id="tokenText" style="width: 100%; height: 80px; padding: 8px; border: 1px solid #ddd; border-radius: 5px; font-family: monospace; font-size: 12px;" readonly></textarea>
+                <div
+                    id="tokenResult"
+                    style="margin-top: 15px; display: none;"
+                >
+                    <textarea
+                        id="tokenText"
+                        style="width: 100%; height: 80px; padding: 8px; border: 1px solid #ddd; border-radius: 5px; font-family: monospace; font-size: 12px;"
+                        readonly
+                    ></textarea>
                 </div>
             </div>
 
             <!-- Recent Activity Card -->
             <div class="card">
                 <h2>📜 Recent Activity</h2>
-                <div id="recentActivity" class="loading">Loading...</div>
+                <div
+                    id="recentActivity"
+                    class="loading"
+                >Loading...</div>
                 <div class="btn-group">
-                    <button onclick="location.href='/ui/history'" class="btn">View Full History</button>
+                    <button
+                        onclick="location.href='/ui/history'"
+                        class="btn"
+                    >View Full History</button>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
+        // Configuration for API server address
+        const API_BASE_URL = '{{.serverAddr}}';
+
         // API helper functions
-        async function fetchAPI(url, options = {}) {
+        async function fetchUIAPI(url, options = {}) {
             try {
-                const response = await fetch(url, {
+                // For UI API endpoints, use relative URLs
+                const fullUrl = url.startsWith('/api/') ? url : `/api${url}`;
+                const response = await fetch(fullUrl, {
                     headers: {
                         'Content-Type': 'application/json',
                         ...options.headers
@@ -240,7 +498,26 @@
                 });
                 return await response.json();
             } catch (error) {
-                console.error('API Error:', error);
+                console.error('UI API Error:', error);
+                return { success: false, error: error.message };
+            }
+        }
+
+        // Server API helper functions - for backend server calls
+        async function fetchServerAPI(url, options = {}) {
+            try {
+                // For server API endpoints, use the server address
+                const fullUrl = url.startsWith('/api/') ? API_BASE_URL + url : url;
+                const response = await fetch(fullUrl, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+                return await response.json();
+            } catch (error) {
+                console.error('Server API Error:', error);
                 return { success: false, error: error.message };
             }
         }
@@ -248,7 +525,7 @@
         // Load server status
         async function loadServerStatus() {
             const statusDiv = document.getElementById('serverStatus');
-            const result = await fetchAPI('/api/status');
+            const result = await fetchUIAPI('/status');
 
             if (result.success) {
                 const data = result.data;
@@ -280,7 +557,7 @@
         // Load providers status
         async function loadProvidersStatus() {
             const providersDiv = document.getElementById('providersStatus');
-            const result = await fetchAPI('/api/providers');
+            const result = await fetchUIAPI('/providers');
 
             if (result.success) {
                 const providers = result.data;
@@ -302,7 +579,7 @@
         // Load recent activity
         async function loadRecentActivity() {
             const activityDiv = document.getElementById('recentActivity');
-            const result = await fetchAPI('/api/history?limit=5');
+            const result = await fetchUIAPI('/history?limit=5');
 
             if (result.success) {
                 const history = result.data;
@@ -326,7 +603,7 @@
         async function startServer() {
             const port = prompt('Enter port (8080):', '8080');
             if (port) {
-                const result = await fetchAPI('/api/server/start', {
+                const result = await fetchServerAPI('/api/server/start', {
                     method: 'POST',
                     body: JSON.stringify({ port: parseInt(port) })
                 });
@@ -341,7 +618,7 @@
 
         async function stopServer() {
             if (confirm('Are you sure you want to stop the server?')) {
-                const result = await fetchAPI('/api/server/stop', { method: 'POST' });
+                const result = await fetchServerAPI('/api/server/stop', { method: 'POST' });
                 if (result.success) {
                     showMessage(result.message, 'success');
                     setTimeout(loadServerStatus, 1000);
@@ -354,7 +631,7 @@
         async function restartServer() {
             const port = prompt('Enter port (8080):', '8080');
             if (port) {
-                const result = await fetchAPI('/api/server/restart', {
+                const result = await fetchServerAPI('/api/server/restart', {
                     method: 'POST',
                     body: JSON.stringify({ port: parseInt(port) })
                 });
@@ -371,7 +648,7 @@
         async function generateToken() {
             const clientId = prompt('Enter client ID (web):', 'web');
             if (clientId) {
-                const result = await fetchAPI(`/api/token?client_id=${encodeURIComponent(clientId)}`);
+                const result = await fetchServerAPI(`/api/token?client_id=${encodeURIComponent(clientId)}`);
                 if (result.success) {
                     document.getElementById('tokenText').value = result.data.token;
                     document.getElementById('tokenResult').style.display = 'block';
@@ -397,10 +674,229 @@
         document.getElementById('restartBtn').addEventListener('click', restartServer);
         document.getElementById('generateTokenBtn').addEventListener('click', generateToken);
 
+        // Load global defaults
+        async function loadDefaults() {
+            const result = await fetchUIAPI('/defaults');
+            if (result.success) {
+                const defaults = result.data;
+                document.getElementById('defaultModelName').value = defaults.defaultModelName || 'tingly';
+
+                // Load providers for dropdown
+                await loadProvidersForDropdown();
+
+                // Set current default provider if available
+                if (defaults.defaultProvider) {
+                    document.getElementById('defaultProviderSelect').value = defaults.defaultProvider;
+                    await loadModelsForProvider(defaults.defaultProvider);
+
+                    // Set current default model if available
+                    if (defaults.defaultModel) {
+                        document.getElementById('defaultModelSelect').value = defaults.defaultModel;
+                    }
+                }
+            } else {
+                console.error('Failed to load defaults:', result.error);
+            }
+        }
+
+        // Load providers for dropdown
+        async function loadProvidersForDropdown() {
+            const result = await fetchUIAPI('/providers');
+            if (result.success) {
+                const providers = result.data;
+                const select = document.getElementById('defaultProviderSelect');
+                select.innerHTML = '<option value="">Select a provider</option>';
+
+                providers.forEach(provider => {
+                    const option = document.createElement('option');
+                    option.value = provider.name;
+                    option.textContent = `${provider.name} (${provider.enabled ? 'enabled' : 'disabled'})`;
+                    select.appendChild(option);
+                });
+            }
+        }
+
+        // Load models for selected provider
+        async function loadModelsForProvider(providerName) {
+            const modelSelect = document.getElementById('defaultModelSelect');
+            if (!providerName) {
+                modelSelect.innerHTML = '<option value="">Select a provider first</option>';
+                modelSelect.disabled = true;
+                return;
+            }
+
+            // Check if we have models for this provider
+            const result = await fetchUIAPI('/provider-models');
+            if (result.success) {
+                const providerModels = result.data;
+                // providerModels is an object with provider names as keys
+                const providerData = providerModels[providerName];
+                const models = providerData ? providerData.models : [];
+
+                modelSelect.innerHTML = '<option value="">Select a model</option>';
+                models.forEach(model => {
+                    const option = document.createElement('option');
+                    option.value = model;
+                    option.textContent = model;
+                    modelSelect.appendChild(option);
+                });
+                modelSelect.disabled = models.length === 0;
+            } else {
+                modelSelect.innerHTML = '<option value="">Failed to load models</option>';
+                modelSelect.disabled = true;
+            }
+        }
+
+        // Load provider selection panel
+        async function loadProviderSelectionPanel() {
+            const panel = document.getElementById('providerSelectionPanel');
+            const providersResult = await fetchUIAPI('/providers');
+            const modelsResult = await fetchUIAPI('/provider-models');
+
+            if (providersResult.success && modelsResult.success) {
+                const providers = providersResult.data;
+                const providerModels = modelsResult.data;
+                const defaultsResult = await fetchUIAPI('/defaults');
+                const defaults = defaultsResult.success ? defaultsResult.data : {};
+
+                const providersHTML = providers.map(provider => {
+                    const providerData = providerModels[provider.name];
+                    const models = providerData ? providerData.models : [];
+                    const isDefault = defaults.defaultProvider === provider.name;
+                    const tileClass = isDefault ? 'provider-tile default' : (provider.enabled ? 'provider-tile' : 'provider-tile disabled');
+                    const statusClass = provider.enabled ? 'enabled' : 'disabled';
+                    const statusText = provider.enabled ? 'Enabled' : 'Disabled';
+
+                    return `
+                        <div class="${tileClass}" data-provider="${provider.name}">
+                            <div class="provider-status ${statusClass}">${statusText}</div>
+                            <div class="provider-name">${provider.name}</div>
+                            <div class="provider-models">${models.length > 0 ? `${models.length} models` : 'No models loaded'}</div>
+                            <div class="provider-actions">
+                                ${!isDefault ? `<button class="tile-btn set-default" onclick="setDefaultProvider('${provider.name}')">Set Default</button>` : '<span style="color: #10b981; font-weight: 500;">Default Provider</span>'}
+                                <button class="tile-btn fetch-models" onclick="fetchProviderModels('${provider.name}')">Fetch Models</button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                panel.innerHTML = `<div class="provider-tiles">${providersHTML}</div>`;
+            } else {
+                panel.innerHTML = '<div class="error">Failed to load providers</div>';
+            }
+        }
+
+        // Set default provider
+        async function setDefaultProvider(providerName) {
+            // First get current defaults to preserve other settings
+            const currentDefaults = await fetchUIAPI('/defaults');
+            if (!currentDefaults.success) {
+                showMessage('Failed to get current defaults', 'error');
+                return;
+            }
+
+            const payload = {
+                defaultProvider: providerName,
+                defaultModel: currentDefaults.data.defaultModel || '',
+                defaultModelName: currentDefaults.data.defaultModelName || 'tingly'
+            };
+
+            const result = await fetchUIAPI('/defaults', {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
+
+            if (result.success) {
+                showMessage(`Set ${providerName} as default provider`, 'success');
+                // Refresh the panel and defaults
+                await loadProviderSelectionPanel();
+                await loadDefaults();
+            } else {
+                showMessage(result.error, 'error');
+            }
+        }
+
+        // Fetch provider models
+        async function fetchProviderModels(providerName) {
+            const result = await fetchUIAPI(`/provider-models/${providerName}`, {
+                method: 'POST'
+            });
+
+            if (result.success) {
+                showMessage(`Successfully fetched models for ${providerName}`, 'success');
+                // Refresh the provider panel
+                await loadProviderSelectionPanel();
+                // If this is the default provider, refresh the model dropdown
+                const defaultProviderSelect = document.getElementById('defaultProviderSelect');
+                if (defaultProviderSelect.value === providerName) {
+                    await loadModelsForProvider(providerName);
+                }
+            } else {
+                showMessage(`Failed to fetch models: ${result.error}`, 'error');
+            }
+        }
+
+        // Save defaults
+        async function saveDefaults() {
+            const defaultModelName = document.getElementById('defaultModelName').value;
+            const defaultProvider = document.getElementById('defaultProviderSelect').value;
+            const defaultModel = document.getElementById('defaultModelSelect').value;
+
+            if (!defaultModelName) {
+                showMessage('Default model name is required', 'error');
+                return;
+            }
+
+            if (defaultProvider && !defaultModel) {
+                showMessage('Please select a model when setting a default provider', 'error');
+                return;
+            }
+
+            const payload = {
+                defaultModelName,
+                defaultProvider,
+                defaultModel
+            };
+
+            const result = await fetchUIAPI('/defaults', {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
+
+            if (result.success) {
+                showMessage('Defaults saved successfully', 'success');
+                // Refresh the provider panel
+                await loadProviderSelectionPanel();
+            } else {
+                showMessage(result.error, 'error');
+            }
+        }
+
+        // Refresh models for current provider
+        async function refreshModels() {
+            const defaultProvider = document.getElementById('defaultProviderSelect').value;
+            if (defaultProvider) {
+                await fetchProviderModels(defaultProvider);
+                await loadModelsForProvider(defaultProvider);
+            } else {
+                showMessage('Please select a provider first', 'error');
+            }
+        }
+
+        // Event listeners for new elements
+        document.getElementById('defaultProviderSelect').addEventListener('change', async (e) => {
+            await loadModelsForProvider(e.target.value);
+        });
+
+        document.getElementById('saveDefaultsBtn').addEventListener('click', saveDefaults);
+        document.getElementById('refreshModelsBtn').addEventListener('click', refreshModels);
+
         // Load initial data
         loadServerStatus();
         loadProvidersStatus();
         loadRecentActivity();
+        loadDefaults();
+        loadProviderSelectionPanel();
 
         // Auto-refresh every 30 seconds
         setInterval(() => {
@@ -410,4 +906,5 @@
         }, 30000);
     </script>
 </body>
+
 </html>

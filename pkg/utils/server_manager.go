@@ -17,13 +17,20 @@ type ServerManager struct {
 	appConfig  *config.AppConfig
 	server     *server.Server
 	pidManager *config.PIDManager
+	enableUI   bool
 }
 
-// NewServerManager creates a new server manager
+// NewServerManager creates a new server manager with UI enabled by default
 func NewServerManager(appConfig *config.AppConfig) *ServerManager {
+	return NewServerManagerWithOptions(appConfig, true)
+}
+
+// NewServerManagerWithOptions creates a new server manager with UI option
+func NewServerManagerWithOptions(appConfig *config.AppConfig, enableUI bool) *ServerManager {
 	return &ServerManager{
 		appConfig:  appConfig,
 		pidManager: config.NewPIDManager(),
+		enableUI:   enableUI,
 	}
 }
 
@@ -41,8 +48,8 @@ func (sm *ServerManager) Start(port int) error {
 		}
 	}
 
-	// Create server
-	sm.server = server.NewServer(sm.appConfig)
+	// Create server with UI option
+	sm.server = server.NewServerWithOptions(sm.appConfig, sm.enableUI)
 
 	// Create PID file
 	if err := sm.pidManager.CreatePIDFile(); err != nil {

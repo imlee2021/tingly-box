@@ -407,6 +407,30 @@ func (s *Server) authenticateMiddleware() gin.HandlerFunc {
 
 // DetermineProviderAndModel resolves the model name and finds the appropriate provider
 func (s *Server) DetermineProviderAndModel(modelName string) (*config.Provider, *config.ModelDefinition, error) {
+	// Check if this is the default model name first
+	globalConfig := s.config.GetGlobalConfig()
+	if globalConfig != nil && globalConfig.IsDefaultModelName(modelName) {
+		// Use default provider and model
+		defaultProvider, defaultModel := globalConfig.GetDefaultProvider(), globalConfig.GetDefaultModel()
+		if defaultProvider != "" && defaultModel != "" {
+			// Find provider configuration
+			providers := s.config.ListProviders()
+			for _, p := range providers {
+				if p.Enabled && p.Name == defaultProvider {
+					// Create a mock model definition for the default model
+					modelDef := &config.ModelDefinition{
+						Name:     defaultModel,
+						Provider: defaultProvider,
+						Model:    defaultModel,
+					}
+					return p, modelDef, nil
+				}
+			}
+			return nil, nil, fmt.Errorf("default provider '%s' is not enabled", defaultProvider)
+		}
+		return nil, nil, fmt.Errorf("default provider or model not configured")
+	}
+
 	if s.modelManager == nil {
 		// Fallback to old logic if model manager is not available
 		provider, err := s.determineProviderFallback(modelName)

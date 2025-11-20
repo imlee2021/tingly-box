@@ -7,23 +7,32 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"tingly-box/internal/auth"
 	"tingly-box/internal/config"
+	"tingly-box/internal/memory"
+
+	"github.com/gin-gonic/gin"
 )
 
 // Server represents the HTTP server
 type Server struct {
-	config        *config.AppConfig
-	jwtManager    *auth.JWTManager
-	router        *gin.Engine
-	httpServer    *http.Server
-	watcher       *config.ConfigWatcher
-	modelManager  *config.ModelManager
+	config       *config.AppConfig
+	jwtManager   *auth.JWTManager
+	router       *gin.Engine
+	httpServer   *http.Server
+	watcher      *config.ConfigWatcher
+	modelManager *config.ModelManager
+	webUI        *WebUI
+	memoryLogger *memory.MemoryLogger
 }
 
 // NewServer creates a new HTTP server instance
 func NewServer(appConfig *config.AppConfig) *Server {
+	return NewServerWithOptions(appConfig, true)
+}
+
+// NewServerWithOptions creates a new HTTP server with UI option
+func NewServerWithOptions(appConfig *config.AppConfig, enableUI bool) *Server {
 	// Set Gin mode
 	gin.SetMode(gin.ReleaseMode)
 
@@ -34,11 +43,23 @@ func NewServer(appConfig *config.AppConfig) *Server {
 		modelManager = nil
 	}
 
+	// Initialize memory logger
+	memoryLogger, err := memory.NewMemoryLogger()
+	if err != nil {
+		log.Printf("Warning: Failed to initialize memory logger: %v", err)
+		memoryLogger = nil
+	}
+
+	// Initialize Web UI
+	webUI := NewWebUI(enableUI, appConfig, memoryLogger)
+
 	server := &Server{
 		config:       appConfig,
 		jwtManager:   auth.NewJWTManager(appConfig.GetJWTSecret()),
 		router:       gin.New(),
 		modelManager: modelManager,
+		webUI:        webUI,
+		memoryLogger: memoryLogger,
 	}
 
 	// Setup middleware
@@ -100,13 +121,10 @@ func (s *Server) setupRoutes() {
 	// Health check endpoint
 	s.router.GET("/health", s.HealthCheck)
 
-	// Dashboard endpoint (redirect to dedicated UI server)
-	s.router.GET("/dashboard", s.DashboardRedirect)
-
 	// Models endpoint
 	s.router.GET("/v1/models", s.ListModels)
 
-	// API v1 group
+	// API v1 group (main server endpoints)
 	v1 := s.router.Group("/v1")
 	{
 		// Chat completions endpoint (OpenAI compatible)
@@ -115,6 +133,11 @@ func (s *Server) setupRoutes() {
 
 	// Token generation endpoint
 	s.router.POST("/token", s.GenerateToken)
+
+	// Integrate Web UI routes if enabled
+	if s.webUI != nil && s.webUI.IsEnabled() {
+		s.webUI.SetupRoutesOnServer(s.router)
+	}
 }
 
 // Start starts the HTTP server

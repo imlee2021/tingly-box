@@ -10,8 +10,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
@@ -34,10 +37,12 @@ type Config struct {
 
 // AppConfig holds the application configuration with encrypted storage
 type AppConfig struct {
-	configFile string
-	config     *Config
-	gcm        cipher.AEAD
-	mu         sync.RWMutex
+	configFile          string
+	config              *Config
+	gcm                 cipher.AEAD
+	mu                  sync.RWMutex
+	globalConfig        *GlobalConfig
+	providerModelManager *ProviderModelManager
 }
 
 // NewAppConfig creates a new application configuration
@@ -73,6 +78,20 @@ func NewAppConfig() (*AppConfig, error) {
 			return nil, fmt.Errorf("failed to load existing config: %w", err)
 		}
 	}
+
+	// Initialize global config
+	globalConfig, err := NewGlobalConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize global config: %w", err)
+	}
+	ac.globalConfig = globalConfig
+
+	// Initialize provider model manager
+	providerModelManager, err := NewProviderModelManager()
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize provider model manager: %w", err)
+	}
+	ac.providerModelManager = providerModelManager
 
 	return ac, nil
 }
@@ -262,6 +281,117 @@ func (ac *AppConfig) SetServerPort(port int) error {
 
 	ac.config.ServerPort = port
 	return ac.Save()
+}
+
+// GetGlobalConfig returns the global configuration manager
+func (ac *AppConfig) GetGlobalConfig() *GlobalConfig {
+	return ac.globalConfig
+}
+
+// GetProviderModelManager returns the provider model manager
+func (ac *AppConfig) GetProviderModelManager() *ProviderModelManager {
+	return ac.providerModelManager
+}
+
+// FetchAndSaveProviderModels fetches models from a provider and saves them
+func (ac *AppConfig) FetchAndSaveProviderModels(providerName string) error {
+	ac.mu.RLock()
+	provider, exists := ac.config.Providers[providerName]
+	ac.mu.RUnlock()
+
+	if !exists {
+		return fmt.Errorf("provider %s not found", providerName)
+	}
+
+	// This is a placeholder - in a real implementation, you would make an HTTP request
+	// to the provider's /models endpoint. For now, we'll create a basic implementation.
+	models := ac.getProviderModelsFromAPI(provider)
+
+	return ac.providerModelManager.SaveModels(providerName, provider.APIBase, models)
+}
+
+// getProviderModelsFromAPI fetches models from provider API via real HTTP requests
+func (ac *AppConfig) getProviderModelsFromAPI(provider *Provider) []string {
+	// Construct the models endpoint URL
+	modelsURL, err := url.Parse(strings.TrimSuffix(provider.APIBase, "/") + "/models")
+	if err != nil {
+		fmt.Printf("Failed to parse models URL for provider %s: %v\n", provider.Name, err)
+		return []string{}
+	}
+
+	// Create HTTP request
+	req, err := http.NewRequest("GET", modelsURL.String(), nil)
+	if err != nil {
+		fmt.Printf("Failed to create request for provider %s: %v\n", provider.Name, err)
+		return []string{}
+	}
+
+	// Set headers
+	req.Header.Set("Authorization", "Bearer "+provider.Token)
+	req.Header.Set("Content-Type", "application/json")
+
+	// Make the request with timeout
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Printf("Failed to fetch models from provider %s: %v\n", provider.Name, err)
+		return []string{}
+	}
+	defer resp.Body.Close()
+
+	// Check response status
+	if resp.StatusCode != http.StatusOK {
+		fmt.Printf("Provider %s returned status %d\n", provider.Name, resp.StatusCode)
+		return []string{}
+	}
+
+	// Parse response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Printf("Failed to read response from provider %s: %v\n", provider.Name, err)
+		return []string{}
+	}
+
+	// Parse JSON response based on OpenAI-compatible format
+	var modelsResponse struct {
+		Data []struct {
+			ID string `json:"id"`
+		} `json:"data"`
+		Error *struct {
+			Message string `json:"message"`
+			Type    string `json:"type"`
+		} `json:"error"`
+	}
+
+	if err := json.Unmarshal(body, &modelsResponse); err != nil {
+		fmt.Printf("Failed to parse JSON response from provider %s: %v\n", provider.Name, err)
+		return []string{}
+	}
+
+	// Check for API error
+	if modelsResponse.Error != nil {
+		fmt.Printf("Provider %s API error: %s\n", provider.Name, modelsResponse.Error.Message)
+		return []string{}
+	}
+
+	// Extract model IDs
+	var models []string
+	for _, model := range modelsResponse.Data {
+		if model.ID != "" {
+			models = append(models, model.ID)
+		}
+	}
+
+	if len(models) == 0 {
+		fmt.Printf("No models found for provider %s\n", provider.Name)
+		return []string{}
+	}
+
+	fmt.Printf("Successfully fetched %d models for provider %s\n", len(models), provider.Name)
+	return models
 }
 
 // generateSecret generates a random secret for JWT

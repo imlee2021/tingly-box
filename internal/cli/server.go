@@ -14,6 +14,7 @@ const PidFile = "tingly-server.pid"
 // StartCommand represents the start server command
 func StartCommand(appConfig *config.AppConfig) *cobra.Command {
 	var port int
+	var enableUI bool
 
 	cmd := &cobra.Command{
 		Use:   "start",
@@ -21,7 +22,7 @@ func StartCommand(appConfig *config.AppConfig) *cobra.Command {
 		Long: `Start the Tingly Box HTTP server that provides the unified API endpoint.
 The server will handle request routing to configured AI providers.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			serverManager := utils.NewServerManager(appConfig)
+			serverManager := utils.NewServerManagerWithOptions(appConfig, enableUI)
 
 			// Check if server is already running
 			if serverManager.IsRunning() {
@@ -36,12 +37,19 @@ The server will handle request routing to configured AI providers.`,
 
 			fmt.Printf("Server started successfully on port %d\n", appConfig.GetServerPort())
 			fmt.Printf("API endpoint: http://localhost:%d/v1/chat/completions\n", appConfig.GetServerPort())
+
+			if enableUI {
+				fmt.Printf("Web UI: http://localhost:%d/\n", appConfig.GetServerPort())
+				fmt.Printf("Dashboard: http://localhost:%d/ui/\n", appConfig.GetServerPort())
+			}
+
 			fmt.Println("Use 'tingly status' to check server status")
 			return nil
 		},
 	}
 
 	cmd.Flags().IntVarP(&port, "port", "p", 8080, "Server port (default: 8080)")
+	cmd.Flags().BoolVarP(&enableUI, "ui", "u", true, "Enable web UI (default: true)")
 	return cmd
 }
 

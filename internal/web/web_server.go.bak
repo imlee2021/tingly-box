@@ -14,9 +14,10 @@ import (
 
 // WebServer provides a simple web interface for configuration management
 type WebServer struct {
-	config *config.AppConfig
-	logger *memory.MemoryLogger
-	router *gin.Engine
+	config     *config.AppConfig
+	logger     *memory.MemoryLogger
+	serverAddr string
+	router     *gin.Engine
 }
 
 // ProviderForm represents provider form data
@@ -27,13 +28,14 @@ type ProviderForm struct {
 }
 
 // NewWebServer creates a new web server
-func NewWebServer(appConfig *config.AppConfig, logger *memory.MemoryLogger) *WebServer {
+func NewWebServer(appConfig *config.AppConfig, logger *memory.MemoryLogger, serverAddr string) *WebServer {
 	gin.SetMode(gin.ReleaseMode)
 
 	ws := &WebServer{
-		config: appConfig,
-		logger: logger,
-		router: gin.New(),
+		config:     appConfig,
+		logger:     logger,
+		serverAddr: serverAddr,
+		router:     gin.New(),
 	}
 
 	ws.setupRoutes()
@@ -64,18 +66,24 @@ func (ws *WebServer) setupRoutes() {
 		ui.GET("/history", ws.historyPage)
 	}
 
-	// API routes
-	api := ws.router.Group("/api")
+	// Web UI API routes (these are handled by the web UI server itself)
+	uiAPI := ws.router.Group("/ui/api")
 	{
-		api.GET("/providers", ws.getProviders)
-		api.POST("/providers", ws.addProvider)
-		api.DELETE("/providers/:name", ws.deleteProvider)
-		api.GET("/status", ws.getStatus)
-		api.POST("/server/start", ws.startServer)
-		api.POST("/server/stop", ws.stopServer)
-		api.POST("/server/restart", ws.restartServer)
-		api.GET("/token", ws.generateToken)
-		api.GET("/history", ws.getHistory)
+		uiAPI.GET("/providers", ws.getProviders)
+		uiAPI.POST("/providers", ws.addProvider)
+		uiAPI.DELETE("/providers/:name", ws.deleteProvider)
+		uiAPI.GET("/status", ws.getStatus)
+		uiAPI.POST("/server/start", ws.startServer)
+		uiAPI.POST("/server/stop", ws.stopServer)
+		uiAPI.POST("/server/restart", ws.restartServer)
+		uiAPI.GET("/token", ws.generateToken)
+		uiAPI.GET("/history", ws.getHistory)
+
+		// New API endpoints for defaults and provider models
+		uiAPI.GET("/defaults", ws.getDefaults)
+		uiAPI.POST("/defaults", ws.setDefaults)
+		uiAPI.GET("/provider-models", ws.getProviderModels)
+		uiAPI.POST("/provider-models/:name", ws.fetchProviderModels)
 	}
 }
 
@@ -300,7 +308,8 @@ func (ws *WebServer) getHistory(c *gin.Context) {
 // Page Handlers
 func (ws *WebServer) dashboard(c *gin.Context) {
 	c.HTML(http.StatusOK, "dashboard.html", gin.H{
-		"title": "Tingly Box Dashboard",
+		"title":      "Tingly Box Dashboard",
+		"serverAddr": ws.serverAddr,
 	})
 }
 
@@ -319,5 +328,174 @@ func (ws *WebServer) serverPage(c *gin.Context) {
 func (ws *WebServer) historyPage(c *gin.Context) {
 	c.HTML(http.StatusOK, "history.html", gin.H{
 		"title": "History - Tingly Box",
+	})
+}
+
+// getDefaults returns the current global defaults
+func (ws *WebServer) getDefaults(c *gin.Context) {
+	globalConfig := ws.config.GetGlobalConfig()
+	if globalConfig == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Global config not available",
+		})
+		return
+	}
+
+	defaultProvider, defaultModel, defaultModelName := globalConfig.GetDefaults()
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"default_provider":   defaultProvider,
+			"default_model":      defaultModel,
+			"default_model_name": defaultModelName,
+		},
+	})
+}
+
+// setDefaults updates the global defaults
+func (ws *WebServer) setDefaults(c *gin.Context) {
+	var req struct {
+		DefaultProvider  string `json:"default_provider"`
+		DefaultModel     string `json:"default_model"`
+		DefaultModelName string `json:"default_model_name"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	globalConfig := ws.config.GetGlobalConfig()
+	if globalConfig == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Global config not available",
+		})
+		return
+	}
+
+	// Update defaults
+	if req.DefaultProvider != "" {
+		if err := globalConfig.SetDefaultProvider(req.DefaultProvider); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"error":   err.Error(),
+			})
+			return
+		}
+	}
+
+	if req.DefaultModel != "" {
+		if err := globalConfig.SetDefaultModel(req.DefaultModel); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"error":   err.Error(),
+			})
+			return
+		}
+	}
+
+	if req.DefaultModelName != "" {
+		if err := globalConfig.SetDefaultModelName(req.DefaultModelName); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"error":   err.Error(),
+			})
+			return
+		}
+	}
+
+	if ws.logger != nil {
+		ws.logger.LogAction(memory.ActionUpdateDefaults, map[string]interface{}{
+			"default_provider":   req.DefaultProvider,
+			"default_model":      req.DefaultModel,
+			"default_model_name": req.DefaultModelName,
+		}, true, "Global defaults updated via web interface")
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Defaults updated successfully",
+	})
+}
+
+// getProviderModels returns provider models information
+func (ws *WebServer) getProviderModels(c *gin.Context) {
+	providerModelManager := ws.config.GetProviderModelManager()
+	if providerModelManager == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Provider model manager not available",
+		})
+		return
+	}
+
+	providers := providerModelManager.GetAllProviders()
+	providerModels := make(map[string]interface{})
+
+	for _, providerName := range providers {
+		models := providerModelManager.GetModels(providerName)
+		apiBase, lastUpdated, _ := providerModelManager.GetProviderInfo(providerName)
+
+		providerModels[providerName] = map[string]interface{}{
+			"models":       models,
+			"api_base":     apiBase,
+			"last_updated": lastUpdated,
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    providerModels,
+	})
+}
+
+// fetchProviderModels fetches models for a specific provider
+func (ws *WebServer) fetchProviderModels(c *gin.Context) {
+	providerName := c.Param("name")
+
+	if providerName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Provider name is required",
+		})
+		return
+	}
+
+	// Fetch and save models
+	err := ws.config.FetchAndSaveProviderModels(providerName)
+	if err != nil {
+		if ws.logger != nil {
+			ws.logger.LogAction(memory.ActionFetchModels, map[string]interface{}{
+				"provider": providerName,
+			}, false, err.Error())
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	// Get the updated models
+	providerModelManager := ws.config.GetProviderModelManager()
+	models := providerModelManager.GetModels(providerName)
+
+	if ws.logger != nil {
+		ws.logger.LogAction(memory.ActionFetchModels, map[string]interface{}{
+			"provider":     providerName,
+			"models_count": len(models),
+		}, true, fmt.Sprintf("Successfully fetched %d models for provider %s", len(models), providerName))
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": fmt.Sprintf("Successfully fetched %d models for provider %s", len(models), providerName),
+		"data":    models,
 	})
 }
