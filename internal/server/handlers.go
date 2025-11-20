@@ -9,16 +9,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"tingly-box/internal/config"
+
+	"github.com/gin-gonic/gin"
 )
 
 // ChatCompletionRequest represents OpenAI chat completion request
 type ChatCompletionRequest struct {
-	Model    string                    `json:"model"`
-	Messages []ChatCompletionMessage   `json:"messages"`
-	Stream   bool                      `json:"stream,omitempty"`
-	Provider string                    `json:"provider,omitempty"`
+	Model    string                  `json:"model"`
+	Messages []ChatCompletionMessage `json:"messages"`
+	Stream   bool                    `json:"stream,omitempty"`
+	Provider string                  `json:"provider,omitempty"`
 }
 
 // ChatCompletionMessage represents a chat message
@@ -29,19 +30,19 @@ type ChatCompletionMessage struct {
 
 // ChatCompletionResponse represents OpenAI chat completion response
 type ChatCompletionResponse struct {
-	ID      string                    `json:"id"`
-	Object  string                    `json:"object"`
-	Created int64                     `json:"created"`
-	Model   string                    `json:"model"`
-	Choices []ChatCompletionChoice    `json:"choices"`
-	Usage   ChatCompletionUsage       `json:"usage"`
+	ID      string                 `json:"id"`
+	Object  string                 `json:"object"`
+	Created int64                  `json:"created"`
+	Model   string                 `json:"model"`
+	Choices []ChatCompletionChoice `json:"choices"`
+	Usage   ChatCompletionUsage    `json:"usage"`
 }
 
 // ChatCompletionChoice represents a completion choice
 type ChatCompletionChoice struct {
-	Index        int                    `json:"index"`
-	Message      ChatCompletionMessage   `json:"message"`
-	FinishReason string                 `json:"finish_reason"`
+	Index        int                   `json:"index"`
+	Message      ChatCompletionMessage `json:"message"`
+	FinishReason string                `json:"finish_reason"`
 }
 
 // ChatCompletionUsage represents token usage information
@@ -66,7 +67,7 @@ type ErrorDetail struct {
 // HealthCheck handles health check requests
 func (s *Server) HealthCheck(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
-		"status": "healthy",
+		"status":  "healthy",
 		"service": "tingly-box",
 	})
 }
@@ -204,11 +205,11 @@ func (s *Server) determineProvider(model, explicitProvider string) (*config.Prov
 
 		// Simple model name matching - can be enhanced
 		if strings.Contains(strings.ToLower(provider.APIBase), "openai") &&
-		   (strings.HasPrefix(strings.ToLower(model), "gpt") || strings.Contains(strings.ToLower(model), "openai")) {
+			(strings.HasPrefix(strings.ToLower(model), "gpt") || strings.Contains(strings.ToLower(model), "openai")) {
 			return provider, nil
 		}
 		if strings.Contains(strings.ToLower(provider.APIBase), "anthropic") &&
-		   strings.HasPrefix(strings.ToLower(model), "claude") {
+			strings.HasPrefix(strings.ToLower(model), "claude") {
 			return provider, nil
 		}
 	}
@@ -239,11 +240,6 @@ func (s *Server) forwardRequest(provider *config.Provider, req *ChatCompletionRe
 
 	// Create HTTP request to provider
 	endpoint := provider.APIBase + "/chat/completions"
-	if !strings.HasSuffix(provider.APIBase, "/") {
-		endpoint = provider.APIBase + "/v1/chat/completions"
-	} else {
-		endpoint = provider.APIBase + "v1/chat/completions"
-	}
 
 	httpReq, err := http.NewRequest("POST", endpoint, bytes.NewBuffer(reqBody))
 	if err != nil {
@@ -304,9 +300,9 @@ func (s *Server) ListModels(c *gin.Context) {
 	var openaiModels []map[string]interface{}
 	for _, model := range models {
 		openaiModel := map[string]interface{}{
-			"id":      model.Name,
-			"object":  "model",
-			"created": time.Now().Unix(), // In a real implementation, use actual creation date
+			"id":       model.Name,
+			"object":   "model",
+			"created":  time.Now().Unix(), // In a real implementation, use actual creation date
 			"owned_by": "tingly-box",
 		}
 
@@ -321,20 +317,20 @@ func (s *Server) ListModels(c *gin.Context) {
 		// Add aliases as metadata
 		if len(model.Aliases) > 0 {
 			openaiModel["metadata"] = map[string]interface{}{
-				"provider":    model.Provider,
-				"api_base":    model.APIBase,
+				"provider":     model.Provider,
+				"api_base":     model.APIBase,
 				"actual_model": model.Model,
-				"aliases":     model.Aliases,
-				"description": model.Description,
-				"category":    model.Category,
+				"aliases":      model.Aliases,
+				"description":  model.Description,
+				"category":     model.Category,
 			}
 		} else {
 			openaiModel["metadata"] = map[string]interface{}{
-				"provider":    model.Provider,
-				"api_base":    model.APIBase,
+				"provider":     model.Provider,
+				"api_base":     model.APIBase,
 				"actual_model": model.Model,
-				"description": model.Description,
-				"category":    model.Category,
+				"description":  model.Description,
+				"category":     model.Category,
 			}
 		}
 
@@ -465,11 +461,11 @@ func (s *Server) determineProviderFallback(model string) (*config.Provider, erro
 		}
 
 		if strings.Contains(strings.ToLower(provider.APIBase), "openai") &&
-		   (strings.HasPrefix(strings.ToLower(model), "gpt") || strings.Contains(strings.ToLower(model), "openai")) {
+			(strings.HasPrefix(strings.ToLower(model), "gpt") || strings.Contains(strings.ToLower(model), "openai")) {
 			return provider, nil
 		}
 		if strings.Contains(strings.ToLower(provider.APIBase), "anthropic") &&
-		   strings.HasPrefix(strings.ToLower(model), "claude") {
+			strings.HasPrefix(strings.ToLower(model), "claude") {
 			return provider, nil
 		}
 	}
@@ -482,4 +478,21 @@ func (s *Server) determineProviderFallback(model string) (*config.Provider, erro
 	}
 
 	return nil, fmt.Errorf("no enabled providers available")
+}
+
+// DashboardRedirect redirects to the dedicated UI server
+func (s *Server) DashboardRedirect(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Tingly Box Dashboard",
+		"note":    "Use 'tingly ui' command to launch the web dashboard",
+		"command": "tingly ui --port 8081",
+		"ui_urls": map[string]string{
+			"root":      "http://localhost:8081/",
+			"dashboard": "http://localhost:8081/",
+			"ui_root":   "http://localhost:8081/ui/",
+			"providers": "http://localhost:8081/ui/providers",
+			"server":    "http://localhost:8081/ui/server",
+			"history":   "http://localhost:8081/ui/history",
+		},
+	})
 }
