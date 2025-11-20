@@ -30,29 +30,30 @@ type Provider struct {
 // Config represents the application configuration
 type Config struct {
 	Providers  map[string]*Provider `json:"providers"`
-	ServerPort int                 `json:"server_port"`
-	JWTSecret  string              `json:"jwt_secret"`
-	mu         sync.RWMutex        `json:"-"`
+	ServerPort int                  `json:"server_port"`
+	JWTSecret  string               `json:"jwt_secret"`
+	mu         sync.RWMutex         `json:"-"`
 }
 
 // AppConfig holds the application configuration with encrypted storage
 type AppConfig struct {
-	configFile          string
-	config              *Config
-	gcm                 cipher.AEAD
-	mu                  sync.RWMutex
-	globalConfig        *GlobalConfig
+	configFile           string
+	config               *Config
+	gcm                  cipher.AEAD
+	mu                   sync.RWMutex
+	globalConfig         *GlobalConfig
 	providerModelManager *ProviderModelManager
 }
 
 // NewAppConfig creates a new application configuration
 func NewAppConfig() (*AppConfig, error) {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get home directory: %w", err)
-	}
+	// homeDir, err := os.UserHomeDir()
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to get home directory: %w", err)
+	// }
 
-	configDir := filepath.Join(homeDir, ".tingly-box")
+	// configDir := filepath.Join(homeDir, ".tingly-box")
+	configDir := ".tingly-box"
 	if err := os.MkdirAll(configDir, 0700); err != nil {
 		return nil, fmt.Errorf("failed to create config directory: %w", err)
 	}

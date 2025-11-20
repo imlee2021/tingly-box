@@ -36,6 +36,25 @@ func NewServerWithOptions(appConfig *config.AppConfig, enableUI bool) *Server {
 	// Set Gin mode
 	gin.SetMode(gin.ReleaseMode)
 
+	// Check and generate token if needed
+	globalConfig := appConfig.GetGlobalConfig()
+	if !globalConfig.HasToken() {
+		log.Println("No token found in global config, generating new token...")
+		jwtManager := auth.NewJWTManager(appConfig.GetJWTSecret())
+		apiKey, err := jwtManager.GenerateAPIKey("server")
+		if err != nil {
+			log.Printf("Failed to generate API key: %v", err)
+		} else {
+			if err := globalConfig.SetToken(apiKey); err != nil {
+				log.Printf("Failed to save generated token: %v", err)
+			} else {
+				log.Printf("Generated and saved new API token: %s", apiKey)
+			}
+		}
+	} else {
+		log.Printf("Using existing token from global config")
+	}
+
 	// Initialize model manager
 	modelManager, err := config.NewModelManager()
 	if err != nil {

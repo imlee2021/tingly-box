@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"encoding/base64"
 	"fmt"
 	"strings"
 	"time"
@@ -47,11 +48,6 @@ func (j *JWTManager) GenerateToken(clientID string) (string, error) {
 
 // ValidateToken validates a JWT token and returns the claims
 func (j *JWTManager) ValidateToken(tokenString string) (*Claims, error) {
-	// Remove "Bearer " prefix if present
-	if strings.HasPrefix(tokenString, "Bearer ") {
-		tokenString = tokenString[7:]
-	}
-
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -69,4 +65,86 @@ func (j *JWTManager) ValidateToken(tokenString string) (*Claims, error) {
 	}
 
 	return claims, nil
+}
+
+// GenerateAPIKey generates a JWT token and encodes it with sk-tingly- prefix
+func (j *JWTManager) GenerateAPIKey(clientID string) (string, error) {
+	// Generate regular JWT token
+	jwtToken, err := j.GenerateToken(clientID)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate JWT token: %w", err)
+	}
+
+	// Encode JWT token to base64
+	encodedToken := base64.URLEncoding.EncodeToString([]byte(jwtToken))
+
+	// Remove padding for cleaner format
+	encodedToken = strings.TrimRight(encodedToken, "=")
+
+	// Add sk-tingly- prefix
+	apiKey := "sk-tingly-" + encodedToken
+
+	return apiKey, nil
+}
+
+// ValidateAPIKey validates an API key with sk-tingly- prefix and returns JWT claims
+func (j *JWTManager) ValidateAPIKey(tokenString string) (*Claims, error) {
+	// Remove "Bearer " prefix if present
+	if strings.HasPrefix(tokenString, "Bearer ") {
+		tokenString = tokenString[7:]
+	}
+
+	// Check if it starts with "sk-tingly-"
+	if !strings.HasPrefix(tokenString, "sk-tingly-") {
+		return nil, fmt.Errorf("invalid API key format: must start with 'sk-tingly-'")
+	}
+
+	// Remove the prefix
+	encodedToken := tokenString[10:] // len("sk-tingly-") = 10
+
+	// Add padding back if needed (base64 decoding requires proper padding)
+	padding := len(encodedToken) % 4
+	if padding != 0 {
+		encodedToken += strings.Repeat("=", 4-padding)
+	}
+
+	// Decode base64 to get JWT token
+	jwtBytes, err := base64.URLEncoding.DecodeString(encodedToken)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode API key: %w", err)
+	}
+
+	jwtToken := string(jwtBytes)
+
+	// Validate the JWT token
+	return j.validateJWT(jwtToken)
+}
+
+// validateJWT validates a JWT token and returns the claims (internal helper)
+func (j *JWTManager) validateJWT(tokenString string) (*Claims, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(j.secretKey), nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse JWT token: %w", err)
+	}
+
+	claims, ok := token.Claims.(*Claims)
+	if !ok || !token.Valid {
+		return nil, fmt.Errorf("invalid JWT token")
+	}
+
+	return claims, nil
+}
+
+// IsAPIKeyFormat checks if the token follows API key format (sk-tingly-xxx)
+func (j *JWTManager) IsAPIKeyFormat(tokenString string) bool {
+	if strings.HasPrefix(tokenString, "Bearer ") {
+		tokenString = tokenString[7:]
+	}
+	return strings.HasPrefix(tokenString, "sk-tingly-")
 }

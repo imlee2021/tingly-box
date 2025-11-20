@@ -15,6 +15,7 @@ type GlobalConfig struct {
 	DefaultModel    string `yaml:"default_model"`
 	RequestModel    string `yaml:"request_model"`  // The "tingly" value
 	ResponseModel   string `yaml:"response_model"` // Response model configuration
+	Token           string `yaml:"token"`          // API token for authentication
 	mutex           sync.RWMutex
 	configFile      string
 }
@@ -153,4 +154,29 @@ func (gc *GlobalConfig) IsRequestModel(modelName string) bool {
 	defer gc.mutex.RUnlock()
 
 	return modelName == gc.RequestModel
+}
+
+// SetToken sets the API token
+func (gc *GlobalConfig) SetToken(token string) error {
+	gc.mutex.Lock()
+	defer gc.mutex.Unlock()
+
+	gc.Token = token
+	return gc.save()
+}
+
+// GetToken returns the API token
+func (gc *GlobalConfig) GetToken() string {
+	gc.mutex.RLock()
+	defer gc.mutex.RUnlock()
+
+	return gc.Token
+}
+
+// HasToken checks if a token is configured
+func (gc *GlobalConfig) HasToken() bool {
+	gc.mutex.RLock()
+	defer gc.mutex.RUnlock()
+
+	return gc.Token != ""
 }

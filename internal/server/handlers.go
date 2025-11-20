@@ -170,10 +170,10 @@ func (s *Server) ChatCompletions(c *gin.Context) {
 		return
 	}
 
-	// Update response with original model name for client compatibility
-	if modelDef != nil {
-		response.Model = modelDef.Name
-	}
+	//// Update response with original model name for client compatibility
+	//if modelDef != nil {
+	//	response.Model = modelDef.Name
+	//}
 
 	// Return response
 	c.JSON(http.StatusOK, response)
@@ -407,14 +407,27 @@ func (s *Server) authenticateMiddleware() gin.HandlerFunc {
 
 		token := tokenParts[1]
 
-		// For testing purposes, we'll accept "valid-test-token"
-		if token == "valid-test-token" {
-			c.Next()
-			return
+		// Check against global config token first
+		globalConfig := s.config.GetGlobalConfig()
+		if globalConfig != nil && globalConfig.HasToken() {
+			configToken := globalConfig.GetToken()
+
+			// Remove "Bearer " prefix if present in the token
+			if strings.HasPrefix(token, "Bearer ") {
+				token = token[7:]
+			}
+
+			// Direct token comparison
+			if token == configToken || strings.TrimPrefix(token, "Bearer ") == configToken {
+				// Token matches the one in global config, allow access
+				c.Set("client_id", "authenticated")
+				c.Next()
+				return
+			}
 		}
 
-		// Validate JWT token
-		claims, err := s.jwtManager.ValidateToken(token)
+		// If not matching global config token, validate as JWT token
+		claims, err := s.jwtManager.ValidateAPIKey(token)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, ErrorResponse{
 				Error: ErrorDetail{
