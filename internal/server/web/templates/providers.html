@@ -156,6 +156,97 @@
             border-radius: 4px;
             font-size: 0.9em;
             word-break: break-all;
+            position: relative;
+        }
+
+  
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 1.5em;
+            color: #333;
+        }
+
+        .close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .close:hover {
+            color: #333;
+        }
+
+        .edit-form .form-group {
+            margin-bottom: 20px;
+        }
+
+        .edit-form label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: #374151;
+        }
+
+        .edit-form input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 5px;
+            font-size: 1em;
+            box-sizing: border-box;
+        }
+
+        .edit-form input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .edit-form .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .edit-form input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 25px;
         }
 
         .provider-actions {
@@ -339,6 +430,41 @@
         </div>
     </div>
 
+    <!-- Edit Provider Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">Edit Provider</span>
+                <span class="close" onclick="closeEditModal()">&times;</span>
+            </div>
+            <form id="editProviderForm" class="edit-form">
+                <input type="hidden" id="editOriginalName">
+                <div class="form-group">
+                    <label for="editName">Provider Name</label>
+                    <input type="text" id="editName" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="editApiBase">API Base URL</label>
+                    <input type="url" id="editApiBase" name="api_base" required>
+                </div>
+                <div class="form-group">
+                    <label for="editToken">API Token</label>
+                    <input type="text" id="editToken" name="token" required>
+                </div>
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="editEnabled" name="enabled">
+                        <label for="editEnabled" style="margin-bottom: 0;">Enabled</label>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
         // API helper functions
         async function fetchAPI(url, options = {}) {
@@ -379,7 +505,7 @@
             if (result.success && result.data.length > 0) {
                 providersList.innerHTML = '<div class="provider-list">' +
                     result.data.map(provider => `
-                        <div class="provider-item ${provider.enabled ? 'enabled' : 'disabled'}">
+                        <div class="provider-item ${provider.enabled ? 'enabled' : 'disabled'}" id="provider-${provider.name}">
                             <div class="provider-header">
                                 <div class="provider-name">${provider.name}</div>
                                 <div class="provider-status ${provider.enabled ? 'status-enabled' : 'status-disabled'}">
@@ -392,13 +518,20 @@
                                     <span class="detail-value">${provider.api_base}</span>
                                 </div>
                                 <div class="detail-item">
+                                    <span class="detail-label">API Token</span>
+                                    <span class="detail-value">${provider.token}</span>
+                                </div>
+                                <div class="detail-item">
                                     <span class="detail-label">Status</span>
                                     <span class="detail-value">${provider.enabled ? 'Active' : 'Inactive'}</span>
                                 </div>
                             </div>
                             <div class="provider-actions">
+                                <button class="btn btn-primary" onclick="editProvider('${provider.name}')">
+                                    Edit
+                                </button>
                                 <button class="btn ${provider.enabled ? 'btn-secondary' : 'btn-success'}"
-                                        onclick="toggleProvider('${provider.name}', ${provider.enabled})">
+                                        onclick="toggleProvider('${provider.name}')">
                                     ${provider.enabled ? 'Disable' : 'Enable'}
                                 </button>
                                 <button class="btn btn-danger" onclick="deleteProvider('${provider.name}')">
@@ -463,9 +596,77 @@
             }
         }
 
-        // Toggle provider status (placeholder)
-        function toggleProvider(name, currentStatus) {
-            showMessage(`Toggle provider status for "${name}" is not yet implemented`, 'error');
+        // Toggle provider status
+        async function toggleProvider(name) {
+            const result = await fetchAPI(`/api/providers/${name}/toggle`, {
+                method: 'POST'
+            });
+
+            if (result.success) {
+                showMessage(result.message, 'success');
+                loadProviders();
+            } else {
+                showMessage(`Failed to toggle provider: ${result.error}`, 'error');
+            }
+        }
+
+        // Edit provider
+        async function editProvider(name) {
+            const result = await fetchAPI(`/api/providers/${name}`);
+
+            if (result.success) {
+                const provider = result.data;
+                document.getElementById('editOriginalName').value = name;
+                document.getElementById('editName').value = provider.name;
+                document.getElementById('editApiBase').value = provider.api_base;
+                document.getElementById('editToken').value = ''; // Don't pre-fill masked token for security
+                document.getElementById('editToken').placeholder = provider.token; // Show masked token as placeholder
+                document.getElementById('editEnabled').checked = provider.enabled;
+
+                document.getElementById('editModal').style.display = 'block';
+            } else {
+                showMessage(`Failed to load provider details: ${result.error}`, 'error');
+            }
+        }
+
+        // Close edit modal
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+            document.getElementById('editProviderForm').reset();
+        }
+
+        // Update provider
+        async function updateProvider(event) {
+            event.preventDefault();
+
+            const formData = new FormData(event.target);
+            const originalName = formData.get('originalName');
+            const tokenValue = formData.get('token');
+
+            // If token is empty, don't update it (preserve existing token)
+            const providerData = {
+                name: formData.get('name'),
+                api_base: formData.get('api_base'),
+                enabled: formData.has('enabled') // checkbox
+            };
+
+            // Only include token if it's provided
+            if (tokenValue.trim() !== '') {
+                providerData.token = tokenValue;
+            }
+
+            const result = await fetchAPI(`/api/providers/${originalName}`, {
+                method: 'PUT',
+                body: JSON.stringify(providerData)
+            });
+
+            if (result.success) {
+                showMessage('Provider updated successfully!', 'success');
+                closeEditModal();
+                loadProviders();
+            } else {
+                showMessage(`Failed to update provider: ${result.error}`, 'error');
+            }
         }
 
         // Reset form
@@ -473,8 +674,17 @@
             document.getElementById('addProviderForm').reset();
         }
 
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('editModal');
+            if (event.target === modal) {
+                closeEditModal();
+            }
+        }
+
         // Event listeners
         document.getElementById('addProviderForm').addEventListener('submit', addProvider);
+        document.getElementById('editProviderForm').addEventListener('submit', updateProvider);
 
         // Load providers on page load
         loadProviders();

@@ -1,16 +1,27 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
+	"time"
 
 	"tingly-box/internal/config"
 	"tingly-box/internal/memory"
 
 	"github.com/gin-gonic/gin"
+)
+
+// GlobalServerManager manages the global server instance for web UI control
+var (
+	globalServer     *Server
+	globalServerLock sync.RWMutex
+	shutdownChan     = make(chan struct{}, 1)
 )
 
 // WebUI represents the web interface management
@@ -20,6 +31,20 @@ type WebUI struct {
 	config  *config.AppConfig
 	logger  *memory.MemoryLogger
 	assets  *EmbeddedAssets
+}
+
+// SetGlobalServer sets the global server instance for web UI control
+func SetGlobalServer(server *Server) {
+	globalServerLock.Lock()
+	defer globalServerLock.Unlock()
+	globalServer = server
+}
+
+// GetGlobalServer gets the global server instance
+func GetGlobalServer() *Server {
+	globalServerLock.RLock()
+	defer globalServerLock.RUnlock()
+	return globalServer
 }
 
 // NewWebUI creates a new web UI manager
@@ -109,7 +134,10 @@ func (wui *WebUI) setupAPIRoutes() {
 	{
 		// Providers management
 		api.GET("/providers", wui.GetProviders)
+		api.GET("/providers/:name", wui.GetProvider)
 		api.POST("/providers", wui.AddProvider)
+		api.PUT("/providers/:name", wui.UpdateProvider)
+		api.POST("/providers/:name/toggle", wui.ToggleProvider)
 		api.DELETE("/providers/:name", wui.DeleteProvider)
 
 		// Server management
@@ -185,7 +213,10 @@ func (wui *WebUI) SetupRoutesOnServer(mainRouter *gin.Engine) {
 	{
 		// Providers management
 		api.GET("/providers", wui.GetProviders)
+		api.GET("/providers/:name", wui.GetProvider)
 		api.POST("/providers", wui.AddProvider)
+		api.PUT("/providers/:name", wui.UpdateProvider)
+		api.POST("/providers/:name/toggle", wui.ToggleProvider)
 		api.DELETE("/providers/:name", wui.DeleteProvider)
 
 		// Server management
@@ -265,9 +296,32 @@ func (wui *WebUI) HistoryPage(c *gin.Context) {
 // API Handlers (exported for server integration)
 func (wui *WebUI) GetProviders(c *gin.Context) {
 	providers := wui.config.ListProviders()
+
+	// Mask tokens for security
+	maskedProviders := make([]struct {
+		Name    string `json:"name"`
+		APIBase string `json:"api_base"`
+		Token   string `json:"token"`
+		Enabled bool   `json:"enabled"`
+	}, len(providers))
+
+	for i, provider := range providers {
+		maskedProviders[i] = struct {
+			Name    string `json:"name"`
+			APIBase string `json:"api_base"`
+			Token   string `json:"token"`
+			Enabled bool   `json:"enabled"`
+		}{
+			Name:    provider.Name,
+			APIBase: provider.APIBase,
+			Token:   maskToken(provider.Token),
+			Enabled: provider.Enabled,
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data":    providers,
+		"data":    maskedProviders,
 	})
 }
 
@@ -329,39 +383,371 @@ func (wui *WebUI) GetDefaults(c *gin.Context) {
 	})
 }
 
-// Placeholder implementations for complex handlers
+// AddProvider adds a new provider
 func (wui *WebUI) AddProvider(c *gin.Context) {
-	c.JSON(http.StatusNotImplemented, gin.H{
-		"success": false,
-		"error":   "Not implemented",
+	var req struct {
+		Name     string `json:"name" binding:"required"`
+		APIBase  string `json:"api_base" binding:"required"`
+		Token    string `json:"token" binding:"required"`
+		Enabled  bool   `json:"enabled"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	// Set default enabled status if not provided
+	if !req.Enabled {
+		req.Enabled = true
+	}
+
+	provider := &config.Provider{
+		Name:    req.Name,
+		APIBase: req.APIBase,
+		Token:   req.Token,
+		Enabled: req.Enabled,
+	}
+
+	err := wui.config.AddProvider(provider)
+	if err != nil {
+		if wui.logger != nil {
+			wui.logger.LogAction(memory.ActionAddProvider, map[string]interface{}{
+				"name":     req.Name,
+				"api_base": req.APIBase,
+			}, false, err.Error())
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	if wui.logger != nil {
+		wui.logger.LogAction(memory.ActionAddProvider, map[string]interface{}{
+			"name":     req.Name,
+			"api_base": req.APIBase,
+		}, true, fmt.Sprintf("Provider %s added successfully", req.Name))
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Provider added successfully",
+		"data":    provider,
 	})
 }
 
+// DeleteProvider removes a provider
 func (wui *WebUI) DeleteProvider(c *gin.Context) {
-	c.JSON(http.StatusNotImplemented, gin.H{
-		"success": false,
-		"error":   "Not implemented",
+	providerName := c.Param("name")
+	if providerName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Provider name is required",
+		})
+		return
+	}
+
+	err := wui.config.RemoveProvider(providerName)
+	if err != nil {
+		if wui.logger != nil {
+			wui.logger.LogAction(memory.ActionDeleteProvider, map[string]interface{}{
+				"name": providerName,
+			}, false, err.Error())
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	if wui.logger != nil {
+		wui.logger.LogAction(memory.ActionDeleteProvider, map[string]interface{}{
+			"name": providerName,
+		}, true, fmt.Sprintf("Provider %s deleted successfully", providerName))
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Provider deleted successfully",
 	})
+}
+
+// UpdateProvider updates an existing provider
+func (wui *WebUI) UpdateProvider(c *gin.Context) {
+	providerName := c.Param("name")
+	if providerName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Provider name is required",
+		})
+		return
+	}
+
+	var req struct {
+		NewName  *string `json:"name,omitempty"`
+		APIBase  *string `json:"api_base,omitempty"`
+		Token    *string `json:"token,omitempty"`
+		Enabled  *bool   `json:"enabled,omitempty"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	// Get existing provider
+	provider, err := wui.config.GetProvider(providerName)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"success": false,
+			"error":   "Provider not found",
+		})
+		return
+	}
+
+	// Update fields if provided
+	if req.NewName != nil {
+		provider.Name = *req.NewName
+	}
+	if req.APIBase != nil {
+		provider.APIBase = *req.APIBase
+	}
+	// Only update token if it's provided and not empty
+	if req.Token != nil && *req.Token != "" {
+		provider.Token = *req.Token
+	}
+	if req.Enabled != nil {
+		provider.Enabled = *req.Enabled
+	}
+
+	err = wui.config.UpdateProvider(providerName, provider)
+	if err != nil {
+		if wui.logger != nil {
+			wui.logger.LogAction(memory.ActionUpdateProvider, map[string]interface{}{
+				"name":     providerName,
+				"updates":  req,
+			}, false, err.Error())
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	if wui.logger != nil {
+		wui.logger.LogAction(memory.ActionUpdateProvider, map[string]interface{}{
+			"name": providerName,
+		}, true, fmt.Sprintf("Provider %s updated successfully", providerName))
+	}
+
+	// Return masked provider data
+	responseProvider := struct {
+		Name    string `json:"name"`
+		APIBase string `json:"api_base"`
+		Token   string `json:"token"`
+		Enabled bool   `json:"enabled"`
+	}{
+		Name:    provider.Name,
+		APIBase: provider.APIBase,
+		Token:   maskToken(provider.Token),
+		Enabled: provider.Enabled,
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Provider updated successfully",
+		"data":    responseProvider,
+	})
+}
+
+// GetProvider returns details for a specific provider (with masked token)
+func (wui *WebUI) GetProvider(c *gin.Context) {
+	providerName := c.Param("name")
+	if providerName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Provider name is required",
+		})
+		return
+	}
+
+	provider, err := wui.config.GetProvider(providerName)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"success": false,
+			"error":   "Provider not found",
+		})
+		return
+	}
+
+	// Mask the token for security
+	maskedToken := maskToken(provider.Token)
+
+	responseProvider := struct {
+		Name    string `json:"name"`
+		APIBase string `json:"api_base"`
+		Token   string `json:"token"`
+		Enabled bool   `json:"enabled"`
+	}{
+		Name:    provider.Name,
+		APIBase: provider.APIBase,
+		Token:   maskedToken,
+		Enabled: provider.Enabled,
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    responseProvider,
+	})
+}
+
+// ToggleProvider enables/disables a provider
+func (wui *WebUI) ToggleProvider(c *gin.Context) {
+	providerName := c.Param("name")
+	if providerName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Provider name is required",
+		})
+		return
+	}
+
+	provider, err := wui.config.GetProvider(providerName)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"success": false,
+			"error":   "Provider not found",
+		})
+		return
+	}
+
+	// Toggle enabled status
+	provider.Enabled = !provider.Enabled
+
+	err = wui.config.UpdateProvider(providerName, provider)
+	if err != nil {
+		if wui.logger != nil {
+			wui.logger.LogAction(memory.ActionUpdateProvider, map[string]interface{}{
+				"name":    providerName,
+				"enabled": provider.Enabled,
+			}, false, err.Error())
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	action := "disabled"
+	if provider.Enabled {
+		action = "enabled"
+	}
+
+	if wui.logger != nil {
+		wui.logger.LogAction(memory.ActionUpdateProvider, map[string]interface{}{
+			"name":    providerName,
+			"enabled": provider.Enabled,
+		}, true, fmt.Sprintf("Provider %s %s successfully", providerName, action))
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": fmt.Sprintf("Provider %s %s successfully", providerName, action),
+		"data": gin.H{
+			"enabled": provider.Enabled,
+		},
+	})
+}
+
+// Helper function to mask tokens for display
+func maskToken(token string) string {
+	if token == "" {
+		return ""
+	}
+
+	// If already masked, return as is
+	if strings.Contains(token, "*") {
+		return token
+	}
+
+	// For very short tokens, mask all characters
+	if len(token) <= 8 {
+		return strings.Repeat("*", len(token))
+	}
+
+	// For longer tokens, show first 4 and last 4 characters
+	return token[:4] + strings.Repeat("*", len(token)-8) + token[len(token)-4:]
 }
 
 func (wui *WebUI) StartServer(c *gin.Context) {
 	c.JSON(http.StatusNotImplemented, gin.H{
 		"success": false,
-		"error":   "Not implemented",
+		"error":   "Start server via web UI not supported. Please use CLI: tingly start",
 	})
 }
 
 func (wui *WebUI) StopServer(c *gin.Context) {
-	c.JSON(http.StatusNotImplemented, gin.H{
-		"success": false,
-		"error":   "Not implemented",
+	// Get the global server instance
+	server := GetGlobalServer()
+	if server == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"success": false,
+			"error":   "No server instance available to stop",
+		})
+		return
+	}
+
+	// Stop the server gracefully
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := server.Stop(ctx); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   fmt.Sprintf("Failed to stop server: %v", err),
+		})
+		return
+	}
+
+	// Log the action
+	if wui.logger != nil {
+		wui.logger.LogAction(memory.ActionStopServer, map[string]interface{}{
+			"source": "web_ui",
+		}, true, "Server stopped via web interface")
+	}
+
+	// Send shutdown signal to main process
+	select {
+	case shutdownChan <- struct{}{}:
+	default:
+		// Channel already has a signal
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Server stopped successfully. The application will now exit.",
 	})
 }
 
 func (wui *WebUI) RestartServer(c *gin.Context) {
 	c.JSON(http.StatusNotImplemented, gin.H{
 		"success": false,
-		"error":   "Not implemented",
+		"error":   "Restart server via web UI not supported. Please use CLI: tingly restart",
 	})
 }
 
@@ -549,4 +935,9 @@ func getStaticPath() string {
 	}
 	// Fallback to relative path
 	return "./web/static"
+}
+
+// GetShutdownChannel returns the shutdown channel for the main process to listen on
+func GetShutdownChannel() <-chan struct{} {
+	return shutdownChan
 }
