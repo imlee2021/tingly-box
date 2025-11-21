@@ -15,6 +15,7 @@ type ActionType string
 const (
 	ActionAddProvider      ActionType = "add_provider"
 	ActionDeleteProvider   ActionType = "delete_provider"
+	ActionUpdateProvider   ActionType = "update_provider"
 	ActionStartServer      ActionType = "start_server"
 	ActionStopServer       ActionType = "stop_server"
 	ActionRestartServer    ActionType = "restart_server"

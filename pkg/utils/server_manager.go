@@ -51,6 +51,9 @@ func (sm *ServerManager) Start(port int) error {
 	// Create server with UI option
 	sm.server = server.NewServerWithOptions(sm.appConfig, sm.enableUI)
 
+	// Set global server instance for web UI control
+	server.SetGlobalServer(sm.server)
+
 	// Create PID file
 	if err := sm.pidManager.CreatePIDFile(); err != nil {
 		return fmt.Errorf("failed to create PID file: %w", err)

@@ -179,6 +179,7 @@ func (s *Server) Start(port int) error {
 
 	fmt.Printf("Starting server on port %d\n", port)
 	fmt.Printf("API endpoint: http://localhost:%d/v1/chat/completions\n", port)
+	fmt.Printf("Web UI: http://localhost:%d/\n", port)
 
 	return s.httpServer.ListenAndServe()
 }

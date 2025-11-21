@@ -74,7 +74,7 @@ func runInteractiveAdd(appConfig *config.AppConfig) error {
 	}
 
 	// Add the provider
-	if err := appConfig.AddProvider(name, apiBase, token); err != nil {
+	if err := appConfig.AddProviderByName(name, apiBase, token); err != nil {
 		return fmt.Errorf("failed to add provider: %w", err)
 	}
 

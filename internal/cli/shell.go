@@ -155,7 +155,7 @@ func addProviderInteractive(appConfig *config.AppConfig, reader *bufio.Reader, l
 		return
 	}
 
-	if err := appConfig.AddProvider(name, apiBase, token); err != nil {
+	if err := appConfig.AddProviderByName(name, apiBase, token); err != nil {
 		fmt.Printf("❌ Failed to add provider: %v\n", err)
 		if logger != nil {
 			logger.LogAction(memory.ActionAddProvider, map[string]interface{}{

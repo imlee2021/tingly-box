@@ -2,9 +2,13 @@ package cli
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"tingly-box/internal/config"
+	"tingly-box/internal/server"
 	"tingly-box/pkg/utils"
 
 	"github.com/spf13/cobra"
@@ -32,21 +36,27 @@ The server will handle request routing to configured AI providers.`,
 				return nil
 			}
 
-			// Start server
-			if err := serverManager.Start(port); err != nil {
-				return fmt.Errorf("failed to start server: %w", err)
+			// Setup signal handling for graceful shutdown
+			sigChan := make(chan os.Signal, 1)
+			signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+			// Start server in goroutine to keep it non-blocking
+			serverErr := make(chan error, 1)
+			go func() {
+				serverErr <- serverManager.Start(port)
+			}()
+
+			// Wait for either server error, shutdown signal, or web UI stop request
+			select {
+			case err := <-serverErr:
+				return fmt.Errorf("server stopped unexpectedly: %w", err)
+			case <-sigChan:
+				fmt.Println("\nReceived shutdown signal, stopping server...")
+				return serverManager.Stop()
+			case <-server.GetShutdownChannel():
+				fmt.Println("\nReceived stop request from web UI, stopping server...")
+				return serverManager.Stop()
 			}
-
-			fmt.Printf("Server started successfully on port %d\n", appConfig.GetServerPort())
-			fmt.Printf("API endpoint: http://localhost:%d/v1/chat/completions\n", appConfig.GetServerPort())
-
-			if enableUI {
-				fmt.Printf("Web UI: http://localhost:%d/\n", appConfig.GetServerPort())
-				fmt.Printf("Dashboard: http://localhost:%d/ui/\n", appConfig.GetServerPort())
-			}
-
-			fmt.Println("Use 'tingly status' to check server status")
-			return nil
 		},
 	}
 

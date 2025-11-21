@@ -121,8 +121,8 @@ func (ac *AppConfig) initEncryption() error {
 	return nil
 }
 
-// AddProvider adds a new AI provider configuration
-func (ac *AppConfig) AddProvider(name, apiBase, token string) error {
+// AddProviderByName adds a new AI provider configuration by name, API base, and token
+func (ac *AppConfig) AddProviderByName(name, apiBase, token string) error {
 	ac.mu.Lock()
 	defer ac.mu.Unlock()
 
@@ -179,6 +179,56 @@ func (ac *AppConfig) ListProviders() []*Provider {
 	}
 
 	return providers
+}
+
+// AddProvider adds a new provider using Provider struct
+func (ac *AppConfig) AddProvider(provider *Provider) error {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+
+	ac.config.mu.Lock()
+	defer ac.config.mu.Unlock()
+
+	if provider.Name == "" {
+		return errors.New("provider name cannot be empty")
+	}
+	if provider.APIBase == "" {
+		return errors.New("API base URL cannot be empty")
+	}
+	if provider.Token == "" {
+		return errors.New("API token cannot be empty")
+	}
+
+	ac.config.Providers[provider.Name] = provider
+
+	return ac.Save()
+}
+
+// UpdateProvider updates an existing provider
+func (ac *AppConfig) UpdateProvider(originalName string, provider *Provider) error {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+
+	ac.config.mu.Lock()
+	defer ac.config.mu.Unlock()
+
+	if _, exists := ac.config.Providers[originalName]; !exists {
+		return fmt.Errorf("provider '%s' not found", originalName)
+	}
+
+	// If name is being changed, remove the old entry and add new one
+	if originalName != provider.Name {
+		delete(ac.config.Providers, originalName)
+	}
+
+	ac.config.Providers[provider.Name] = provider
+
+	return ac.Save()
+}
+
+// RemoveProvider removes a provider by name (alias for DeleteProvider)
+func (ac *AppConfig) RemoveProvider(name string) error {
+	return ac.DeleteProvider(name)
 }
 
 // DeleteProvider removes a provider by name
