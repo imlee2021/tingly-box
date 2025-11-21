@@ -166,8 +166,8 @@ func (s *Server) ChatCompletions(c *gin.Context) {
 	}
 
 	// Update response model if configured and we have model definition
-	if responseModel != "" && modelDef != nil {
-		responseMap["model"] = modelDef.Name
+	if responseModel != "" {
+		responseMap["model"] = responseModel
 	}
 
 	// Return modified response
