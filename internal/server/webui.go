@@ -172,18 +172,7 @@ func (wui *WebUI) SetupRoutesOnServer(mainRouter *gin.Engine) {
 	}
 
 	// Add dashboard routes to main router
-	mainRouter.GET("/", wui.Dashboard)
 	mainRouter.GET("/dashboard", wui.Dashboard)
-
-	// UI page routes on main router
-	// ui := mainRouter.Group("/")
-	// {
-	// 	ui.GET("/", wui.Dashboard)
-	// 	ui.GET("/dashboard", wui.Dashboard)
-	// 	ui.GET("/providers", wui.ProvidersPage)
-	// 	ui.GET("/server", wui.ServerPage)
-	// 	ui.GET("/history", wui.HistoryPage)
-	// }
 
 	// Add API routes for web UI functionality on main router
 	api := mainRouter.Group("/api")
