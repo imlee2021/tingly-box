@@ -108,6 +108,26 @@ const theme = createTheme({
         },
       },
     },
+    MuiListItemButton: {
+      styleOverrides: {
+        root: {
+          '&.nav-item-active': {
+            backgroundColor: '#2563eb',
+            color: '#ffffff',
+            '&:hover': {
+              backgroundColor: '#1d4ed8',
+            },
+            '& .MuiListItemIcon-root': {
+              color: '#ffffff',
+            },
+            '& .MuiListItemText-primary': {
+              color: '#ffffff',
+              fontWeight: 600,
+            },
+          },
+        },
+      },
+    },
     MuiButton: {
       styleOverrides: {
         root: {

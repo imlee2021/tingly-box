@@ -71,16 +71,16 @@ const Layout = ({ children }: LayoutProps) => {
               component={RouterLink}
               to={item.path}
               onClick={handleDrawerToggle}
+              className={isActive(item.path) ? 'nav-item-active' : ''}
               sx={{
                 mx: 2,
                 borderRadius: 2,
-                backgroundColor: isActive(item.path) ? 'primary.main' : 'transparent',
-                color: isActive(item.path) ? 'primary.contrastText' : 'text.primary',
+                color: isActive(item.path) ? 'inherit' : 'text.primary',
                 '&:hover': {
-                  backgroundColor: isActive(item.path) ? 'primary.dark' : 'action.hover',
+                  backgroundColor: isActive(item.path) ? 'inherit' : 'action.hover',
                 },
                 '& .MuiListItemIcon-root': {
-                  color: isActive(item.path) ? 'primary.contrastText' : 'text.secondary',
+                  color: isActive(item.path) ? 'inherit' : 'text.secondary',
                 },
               }}
             >
@@ -88,7 +88,7 @@ const Layout = ({ children }: LayoutProps) => {
               <ListItemText
                 primary={item.label}
                 primaryTypographyProps={{
-                  fontWeight: isActive(item.path) ? 600 : 400,
+                  fontWeight: isActive(item.path) ? 'inherit' : 400,
                 }}
               />
             </ListItemButton>
