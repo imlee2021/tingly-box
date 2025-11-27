@@ -1,6 +1,6 @@
 // API service layer for communicating with the backend
 
-const API_BASE_URL = ''; // Will be replaced by environment variable or actual base URL
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 async function fetchUIAPI(url: string, options: RequestInit = {}): Promise<any> {
   try {
