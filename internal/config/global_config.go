@@ -16,6 +16,7 @@ type GlobalConfig struct {
 	RequestModel    string `yaml:"request_model"`  // The "tingly" value
 	ResponseModel   string `yaml:"response_model"` // Response model configuration
 	Token           string `yaml:"token"`          // API token for authentication
+	EncryptProviders bool `yaml:"encrypt_providers"` // Whether to encrypt provider info (default false)
 	mutex           sync.RWMutex
 	configFile      string
 }
@@ -179,4 +180,21 @@ func (gc *GlobalConfig) HasToken() bool {
 	defer gc.mutex.RUnlock()
 
 	return gc.Token != ""
+}
+
+// SetEncryptProviders sets whether to encrypt provider information
+func (gc *GlobalConfig) SetEncryptProviders(encrypt bool) error {
+	gc.mutex.Lock()
+	defer gc.mutex.Unlock()
+
+	gc.EncryptProviders = encrypt
+	return gc.save()
+}
+
+// GetEncryptProviders returns whether provider information should be encrypted
+func (gc *GlobalConfig) GetEncryptProviders() bool {
+	gc.mutex.RLock()
+	defer gc.mutex.RUnlock()
+
+	return gc.EncryptProviders
 }

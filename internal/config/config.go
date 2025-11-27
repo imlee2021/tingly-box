@@ -58,7 +58,7 @@ func NewAppConfig() (*AppConfig, error) {
 		return nil, fmt.Errorf("failed to create config directory: %w", err)
 	}
 
-	configFile := filepath.Join(configDir, "config.enc")
+	configFile := filepath.Join(configDir, "config.json")
 	ac := &AppConfig{
 		configFile: configFile,
 		config: &Config{
@@ -73,8 +73,20 @@ func NewAppConfig() (*AppConfig, error) {
 		return nil, fmt.Errorf("failed to initialize encryption: %w", err)
 	}
 
-	// Load existing configuration if exists
-	if _, err := os.Stat(configFile); err == nil {
+	// Load existing configuration if exists (check both encrypted and unencrypted)
+	encryptedFile := filepath.Join(configDir, "config.enc")
+	if _, err := os.Stat(encryptedFile); err == nil {
+		// Try to load from old encrypted file first and migrate to new format
+		if loadErr := ac.loadFromEncrypted(encryptedFile); loadErr != nil {
+			return nil, fmt.Errorf("failed to load existing encrypted config: %w", loadErr)
+		}
+		// Save in new format (plaintext by default)
+		if err := ac.Save(); err != nil {
+			return nil, fmt.Errorf("failed to migrate config to new format: %w", err)
+		}
+		// Remove old encrypted file after successful migration
+		os.Remove(encryptedFile)
+	} else if _, err := os.Stat(configFile); err == nil {
 		if err := ac.Load(); err != nil {
 			return nil, fmt.Errorf("failed to load existing config: %w", err)
 		}
@@ -247,40 +259,103 @@ func (ac *AppConfig) DeleteProvider(name string) error {
 	return ac.Save()
 }
 
-// Save encrypts and saves the configuration to file
+// Save saves the configuration to file, with optional encryption based on global config
 func (ac *AppConfig) Save() error {
 	data, err := json.Marshal(ac.config)
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
 
-	nonce := make([]byte, ac.gcm.NonceSize())
-	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-		return err
+	// Check if encryption is enabled
+	shouldEncrypt := false
+	if ac.globalConfig != nil {
+		shouldEncrypt = ac.globalConfig.GetEncryptProviders()
 	}
 
-	ciphertext := ac.gcm.Seal(nonce, nonce, data, nil)
+	var fileData []byte
+	if shouldEncrypt {
+		// Encrypt the data
+		nonce := make([]byte, ac.gcm.NonceSize())
+		if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+			return err
+		}
 
-	// Encode to base64 for storage
-	encoded := base64.StdEncoding.EncodeToString(ciphertext)
+		ciphertext := ac.gcm.Seal(nonce, nonce, data, nil)
+		// Encode to base64 for storage
+		fileData = []byte(base64.StdEncoding.EncodeToString(ciphertext))
+	} else {
+		// Save as plaintext JSON with pretty formatting
+		fileData, err = json.MarshalIndent(ac.config, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal config with indentation: %w", err)
+		}
+	}
 
-	if err := os.WriteFile(ac.configFile, []byte(encoded), 0600); err != nil {
+	if err := os.WriteFile(ac.configFile, fileData, 0600); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 
 	return nil
 }
 
-// Load decrypts and loads the configuration from file
+// Load loads the configuration from file (supports both encrypted and plaintext formats)
 func (ac *AppConfig) Load() error {
 	data, err := os.ReadFile(ac.configFile)
 	if err != nil {
 		return fmt.Errorf("failed to read config file: %w", err)
 	}
 
+	// Check if encryption is enabled
+	shouldEncrypt := false
+	if ac.globalConfig != nil {
+		shouldEncrypt = ac.globalConfig.GetEncryptProviders()
+	}
+
+	var plaintext []byte
+	if shouldEncrypt {
+		// Try to decrypt the data
+		ciphertext, err := base64.StdEncoding.DecodeString(string(data))
+		if err != nil {
+			return fmt.Errorf("failed to decode config: %w", err)
+		}
+
+		nonceSize := ac.gcm.NonceSize()
+		if len(ciphertext) < nonceSize {
+			return errors.New("ciphertext too short")
+		}
+
+		nonce, ciphertext := ciphertext[:nonceSize], ciphertext[nonceSize:]
+		plaintext, err = ac.gcm.Open(nil, nonce, ciphertext, nil)
+		if err != nil {
+			return fmt.Errorf("failed to decrypt config: %w", err)
+		}
+	} else {
+		// Load as plaintext JSON
+		plaintext = data
+	}
+
+	var config Config
+	if err := json.Unmarshal(plaintext, &config); err != nil {
+		return fmt.Errorf("failed to unmarshal config: %w", err)
+	}
+
+	ac.mu.Lock()
+	ac.config = &config
+	ac.mu.Unlock()
+
+	return nil
+}
+
+// loadFromEncrypted loads configuration from an old encrypted file (for migration)
+func (ac *AppConfig) loadFromEncrypted(encryptedFile string) error {
+	data, err := os.ReadFile(encryptedFile)
+	if err != nil {
+		return fmt.Errorf("failed to read encrypted config file: %w", err)
+	}
+
 	ciphertext, err := base64.StdEncoding.DecodeString(string(data))
 	if err != nil {
-		return fmt.Errorf("failed to decode config: %w", err)
+		return fmt.Errorf("failed to decode encrypted config: %w", err)
 	}
 
 	nonceSize := ac.gcm.NonceSize()
@@ -296,7 +371,7 @@ func (ac *AppConfig) Load() error {
 
 	var config Config
 	if err := json.Unmarshal(plaintext, &config); err != nil {
-		return fmt.Errorf("failed to unmarshal config: %w", err)
+		return fmt.Errorf("failed to unmarshal encrypted config: %w", err)
 	}
 
 	ac.mu.Lock()
