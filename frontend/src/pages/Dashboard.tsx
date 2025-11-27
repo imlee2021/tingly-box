@@ -3,7 +3,6 @@ import {
     Alert,
     Box,
     Button,
-    Chip,
     CircularProgress,
     FormControl,
     InputLabel,
@@ -16,6 +15,7 @@ import {
 import { useEffect, useState } from 'react';
 import CardGrid, { CardGridItem } from '../components/CardGrid';
 import UnifiedCard from '../components/UnifiedCard';
+import ProviderCard from '../components/ProviderCard';
 import { api } from '../services/api';
 
 const Dashboard = () => {
@@ -255,60 +255,91 @@ const Dashboard = () => {
 
             <CardGrid>
                 {/* Default Model Configuration */}
-                <CardGridItem xs={12} md={6}>
+                <CardGridItem xs={12}>
                     <UnifiedCard
                         title="Default Model Configuration"
                         subtitle="Configure default provider and model settings"
-                        size="large"
+                        size="fullw"
                     >
                         <Stack spacing={2}>
-                            <TextField
-                                fullWidth
-                                label="Request Model Name"
-                                value={requestModelName}
-                                onChange={(e) => setRequestModelName(e.target.value)}
-                                helperText="When requests use this model name, the default provider and model will be used"
-                            />
-
-                            <TextField
-                                fullWidth
-                                label="Response Model"
-                                value={responseModelName}
-                                onChange={(e) => setResponseModelName(e.target.value)}
-                                helperText="Model to use for response processing (optional - leave empty for default behavior)"
-                            />
-
-                            <FormControl fullWidth>
-                                <InputLabel>Default Provider</InputLabel>
-                                <Select
-                                    value={defaultProvider}
-                                    onChange={(e) => handleProviderChange(e.target.value)}
-                                    label="Default Provider"
+                            {/* Single row with 4 input fields and horizontal scroll */}
+                            <Box
+                                sx={{
+                                    width: '100%',
+                                    overflowX: 'auto',
+                                    py: 1,
+                                    '&::-webkit-scrollbar': {
+                                        height: 8,
+                                    },
+                                    '&::-webkit-scrollbar-track': {
+                                        backgroundColor: 'grey.100',
+                                        borderRadius: 1,
+                                    },
+                                    '&::-webkit-scrollbar-thumb': {
+                                        backgroundColor: 'grey.300',
+                                        borderRadius: 1,
+                                    },
+                                }}
+                            >
+                                <Stack
+                                    direction="row"
+                                    spacing={2}
+                                    sx={{
+                                        minWidth: 'max-content',
+                                        alignItems: 'flex-start',
+                                    }}
                                 >
-                                    <MenuItem value="">Select a provider</MenuItem>
-                                    {providers.map((provider) => (
-                                        <MenuItem key={provider.name} value={provider.name}>
-                                            {provider.name} ({provider.enabled ? 'enabled' : 'disabled'})
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
+                                    <TextField
+                                        label="Request Model Name"
+                                        value={requestModelName}
+                                        onChange={(e) => setRequestModelName(e.target.value)}
+                                        helperText="When requests use this model name"
+                                        sx={{ minWidth: 250, width: 250 }}
+                                        size="small"
+                                    />
 
-                            <FormControl fullWidth disabled={!defaultProvider}>
-                                <InputLabel>Default Model</InputLabel>
-                                <Select
-                                    value={defaultModel}
-                                    onChange={(e) => setDefaultModel(e.target.value)}
-                                    label="Default Model"
-                                >
-                                    <MenuItem value="">Select a model</MenuItem>
-                                    {providerModels[defaultProvider]?.models.map((model: string) => (
-                                        <MenuItem key={model} value={model}>
-                                            {model}
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
+                                    <TextField
+                                        label="Response Model"
+                                        value={responseModelName}
+                                        onChange={(e) => setResponseModelName(e.target.value)}
+                                        helperText="Response as model. Empty for as it is."
+                                        sx={{ minWidth: 250, width: 250 }}
+                                        size="small"
+                                    />
+
+                                    <FormControl sx={{ minWidth: 250, width: 250 }} size="small">
+                                        <InputLabel>Default Provider</InputLabel>
+                                        <Select
+                                            value={defaultProvider}
+                                            onChange={(e) => handleProviderChange(e.target.value)}
+                                            label="Default Provider"
+                                        >
+                                            <MenuItem value="">Select a provider</MenuItem>
+                                            {providers.map((provider) => (
+                                                <MenuItem key={provider.name} value={provider.name}>
+                                                    {provider.name} ({provider.enabled ? 'enabled' : 'disabled'})
+                                                </MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
+
+                                    <FormControl sx={{ minWidth: 250, width: 250 }} size="small" disabled={!defaultProvider}>
+                                        <InputLabel>Default Model</InputLabel>
+                                        <Select
+                                            value={defaultModel}
+                                            onChange={(e) => setDefaultModel(e.target.value)}
+                                            label="Default Model"
+                                        >
+                                            <MenuItem value="">Select a model</MenuItem>
+                                            {providerModels[defaultProvider]?.models.map((model: string) => (
+                                                <MenuItem key={model} value={model}>
+                                                    {model}
+                                                </MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
+                                </Stack>
+                            </Box>
 
                             <Stack direction="row" spacing={2}>
                                 <Button variant="contained" onClick={handleSaveDefaults}>
@@ -329,72 +360,32 @@ const Dashboard = () => {
                         subtitle="Quick access to all configured providers"
                         size="large"
                     >
-                        <Box sx={{ maxHeight: 200, overflowY: 'auto' }}>
-                            <Stack spacing={2}>
-                                {providers.map((provider) => {
-                                    const providerData = providerModels[provider.name];
-                                    const models = providerData ? providerData.models : [];
-                                    const isDefault = defaults.defaultProvider === provider.name;
-
-                                    return (
-                                        <Box
-                                            key={provider.name}
-                                            sx={{
-                                                border: 1,
-                                                borderColor: isDefault
-                                                    ? 'primary.main'
-                                                    : provider.enabled
-                                                        ? 'success.main'
-                                                        : 'divider',
-                                                borderRadius: 1,
-                                                p: 2,
-                                                backgroundColor: isDefault
-                                                    ? 'primary.50'
-                                                    : provider.enabled
-                                                        ? 'transparent'
-                                                        : 'grey.50',
-                                                opacity: provider.enabled ? 1 : 0.7,
-                                            }}
-                                        >
-                                            <Stack spacing={1}>
-                                                <Stack direction="row" justifyContent="space-between" alignItems="center">
-                                                    <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>
-                                                        {provider.name}
-                                                    </Typography>
-                                                    <Chip
-                                                        label={provider.enabled ? 'Enabled' : 'Disabled'}
-                                                        color={provider.enabled ? 'success' : 'error'}
-                                                        size="small"
-                                                    />
-                                                </Stack>
-                                                <Typography variant="body2" color="text.secondary">
-                                                    {models.length > 0 ? `${models.length} models` : 'No models loaded'}
-                                                </Typography>
-                                                <Stack direction="row" spacing={1}>
-                                                    {!isDefault ? (
-                                                        <Button
-                                                            size="small"
-                                                            variant="outlined"
-                                                            onClick={() => setDefaultProviderHandler(provider.name)}
-                                                        >
-                                                            Set Default
-                                                        </Button>
-                                                    ) : (
-                                                        <Chip label="Default" color="primary" size="small" />
-                                                    )}
-                                                    <Button
-                                                        size="small"
-                                                        variant="outlined"
-                                                        onClick={() => fetchProviderModels(provider.name)}
-                                                    >
-                                                        Fetch Models
-                                                    </Button>
-                                                </Stack>
-                                            </Stack>
-                                        </Box>
-                                    );
-                                })}
-                            </Stack>
+                        <Box sx={{ maxHeight: 300, overflowY: 'auto' }}>
+                            {providers.length > 0 ? (
+                                <CardGrid>
+                                    {providers.map((provider) => {
+                                        const isDefault = defaults.defaultProvider === provider.name;
+                                        return (
+                                            <CardGridItem xs={12} sm={6} key={provider.name}>
+                                                <ProviderCard
+                                                    provider={provider}
+                                                    variant="simple"
+                                                    isDefault={isDefault}
+                                                    providerModels={providerModels}
+                                                    onSetDefault={setDefaultProviderHandler}
+                                                    onFetchModels={fetchProviderModels}
+                                                />
+                                            </CardGridItem>
+                                        );
+                                    })}
+                                </CardGrid>
+                            ) : (
+                                <Box textAlign="center" py={3}>
+                                    <Typography variant="body2" color="text.secondary">
+                                        No providers configured yet
+                                    </Typography>
+                                </Box>
+                            )}
                         </Box>
                     </UnifiedCard>
                 </CardGridItem>

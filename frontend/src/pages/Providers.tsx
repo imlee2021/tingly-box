@@ -1,16 +1,13 @@
-import { Cancel, CheckCircle, Delete, Edit } from '@mui/icons-material';
 import {
     Alert,
     Box,
     Button,
-    Chip,
     CircularProgress,
     Dialog,
     DialogActions,
     DialogContent,
     DialogTitle,
     FormControlLabel,
-    IconButton,
     Stack,
     Switch,
     TextField,
@@ -19,6 +16,7 @@ import {
 import { useEffect, useState } from 'react';
 import CardGrid, { CardGridItem } from '../components/CardGrid';
 import UnifiedCard from '../components/UnifiedCard';
+import ProviderCard from '../components/ProviderCard';
 import { api } from '../services/api';
 
 const Providers = () => {
@@ -184,86 +182,20 @@ const Providers = () => {
                         size="fullw"
                     >
                         {providers.length > 0 ? (
-                            <Box sx={{ flex: 1, overflowY: 'auto', maxHeight: 380 }}>
-                                <Stack spacing={2}>
+                            <Box sx={{ flex: 1 }}>
+                                <CardGrid>
                                     {providers.map((provider) => (
-                                        <Box
-                                            key={provider.name}
-                                            sx={{
-                                                border: 1,
-                                                borderLeft: 4,
-                                                borderColor: provider.enabled ? 'success.main' : 'error.main',
-                                                borderRadius: 2,
-                                                p: 2,
-                                                backgroundColor: 'background.paper',
-                                                opacity: provider.enabled ? 1 : 0.7,
-                                                transition: 'all 0.2s ease-in-out',
-                                                '&:hover': {
-                                                    boxShadow: 1,
-                                                }
-                                            }}
-                                        >
-                                            <Stack spacing={2}>
-                                                <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }}>
-                                                    <Stack direction="row" alignItems="center" spacing={1}>
-                                                        <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.9rem' }}>
-                                                            {provider.name}
-                                                        </Typography>
-                                                        {provider.enabled ? (
-                                                            <CheckCircle color="success" fontSize="small" />
-                                                        ) : (
-                                                            <Cancel color="error" fontSize="small" />
-                                                        )}
-                                                        <Chip
-                                                            label={provider.enabled ? 'Enabled' : 'Disabled'}
-                                                            color={provider.enabled ? 'success' : 'error'}
-                                                            size="small"
-                                                        />
-                                                    </Stack>
-                                                    <Stack direction="row" spacing={1}>
-                                                        <IconButton
-                                                            size="small"
-                                                            color="primary"
-                                                            onClick={() => handleEditProvider(provider.name)}
-                                                        >
-                                                            <Edit fontSize="small" />
-                                                        </IconButton>
-                                                        <IconButton
-                                                            size="small"
-                                                            color={provider.enabled ? 'warning' : 'success'}
-                                                            onClick={() => handleToggleProvider(provider.name)}
-                                                        >
-                                                            {provider.enabled ? <Cancel fontSize="small" /> : <CheckCircle fontSize="small" />}
-                                                        </IconButton>
-                                                        <IconButton
-                                                            size="small"
-                                                            color="error"
-                                                            onClick={() => handleDeleteProvider(provider.name)}
-                                                        >
-                                                            <Delete fontSize="small" />
-                                                        </IconButton>
-                                                    </Stack>
-                                                </Stack>
-                                                <Box>
-                                                    <Typography variant="caption" color="text.secondary" gutterBottom>
-                                                        API Base
-                                                    </Typography>
-                                                    <Typography variant="caption" sx={{ fontFamily: 'monospace', backgroundColor: 'grey.100', p: 0.5, borderRadius: 1, display: 'block', wordBreak: 'break-all' }}>
-                                                        {provider.api_base}
-                                                    </Typography>
-                                                </Box>
-                                                <Box>
-                                                    <Typography variant="caption" color="text.secondary" gutterBottom>
-                                                        API Token
-                                                    </Typography>
-                                                    <Typography variant="caption" sx={{ fontFamily: 'monospace', backgroundColor: 'grey.100', p: 0.5, borderRadius: 1, display: 'block' }}>
-                                                        {provider.token ? `${provider.token.substring(0, 8)}...` : 'Not set'}
-                                                    </Typography>
-                                                </Box>
-                                            </Stack>
-                                        </Box>
+                                        <CardGridItem xs={12} sm={6} md={4} lg={3} key={provider.name}>
+                                            <ProviderCard
+                                                provider={provider}
+                                                variant="detailed"
+                                                onEdit={handleEditProvider}
+                                                onToggle={handleToggleProvider}
+                                                onDelete={handleDeleteProvider}
+                                            />
+                                        </CardGridItem>
                                     ))}
-                                </Stack>
+                                </CardGrid>
                             </Box>
                         ) : (
                             <Box textAlign="center" py={5}>

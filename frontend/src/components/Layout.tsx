@@ -168,7 +168,7 @@ const Layout = ({ children }: LayoutProps) => {
         sx={{
           flexGrow: 1,
           width: { sm: `calc(100% - ${drawerWidth}px)` },
-          minHeight: '100vh',
+          height: '100vh',
           display: 'flex',
           flexDirection: 'column',
         }}
@@ -197,7 +197,27 @@ const Layout = ({ children }: LayoutProps) => {
         </Box>
 
         {/* Page Content */}
-        <Box sx={{ flex: 1, p: 3 }}>
+        <Box
+          sx={{
+            flex: 1,
+            p: 3,
+            overflowY: 'auto',
+            '&::-webkit-scrollbar': {
+              width: 8,
+            },
+            '&::-webkit-scrollbar-track': {
+              backgroundColor: 'grey.100',
+              borderRadius: 1,
+            },
+            '&::-webkit-scrollbar-thumb': {
+              backgroundColor: 'grey.300',
+              borderRadius: 1,
+              '&:hover': {
+                backgroundColor: 'grey.400',
+              },
+            },
+          }}
+        >
           {children}
         </Box>
       </Box>
