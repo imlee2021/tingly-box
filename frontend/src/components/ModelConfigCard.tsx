@@ -73,7 +73,13 @@ const ModelConfigCard = ({
             id: generateId(),
             requestModel: 'tingly',
             responseModel: '',
-            providers: [],
+            providers: [
+                {
+                    id: generateId(),
+                    provider: '',
+                    model: '',
+                },
+            ],
         };
         setConfigRecords([...configRecords, newRecord]);
     };
@@ -172,7 +178,7 @@ const ModelConfigCard = ({
         <UnifiedCard
             title="Model Configuration"
             subtitle="Configure model providers and settings"
-            size="fullw"
+            size="full"
             message={message}
             onClearMessage={() => setMessage(null)}
         >
