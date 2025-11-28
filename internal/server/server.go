@@ -143,7 +143,25 @@ func (s *Server) setupRoutes() {
 	// Models endpoint
 	s.router.GET("/v1/models", s.ListModels)
 
-	// API v1 group (main server endpoints)
+	// OpenAI v1 API group
+	openaiV1 := s.router.Group("/openai/v1")
+	{
+		// Chat completions endpoint (OpenAI compatible)
+		openaiV1.POST("/chat/completions", s.AuthenticateMiddleware(), s.OpenAIChatCompletions)
+		// Models endpoint (OpenAI compatible)
+		openaiV1.GET("/models", s.AuthenticateMiddleware(), s.ListModels)
+	}
+
+	// Anthropic v1 API group
+	anthropicV1 := s.router.Group("/anthropic/v1")
+	{
+		// Chat completions endpoint (Anthropic compatible)
+		anthropicV1.POST("/messages", s.AuthenticateMiddleware(), s.AnthropicMessages)
+		// Models endpoint (Anthropic compatible)
+		anthropicV1.GET("/models", s.AuthenticateMiddleware(), s.AnthropicModels)
+	}
+
+	// Legacy API v1 group for backward compatibility
 	v1 := s.router.Group("/v1")
 	{
 		// Chat completions endpoint (OpenAI compatible)
@@ -178,8 +196,10 @@ func (s *Server) Start(port int) error {
 	}
 
 	fmt.Printf("Starting server on port %d\n", port)
-	fmt.Printf("API endpoint: http://localhost:%d/v1/chat/completions\n", port)
-	fmt.Printf("Web UI: http://localhost:%d/\n", port)
+	fmt.Printf("OpenAI v1 API endpoint: http://localhost:%d/openai/v1/chat/completions\n", port)
+	fmt.Printf("Anthropic v1 API endpoint: http://localhost:%d/anthropic/v1/messages\n", port)
+	fmt.Printf("Legacy API endpoint: http://localhost:%d/v1/chat/completions\n", port)
+	fmt.Printf("Web UI: http://localhost:%d/dashboard\n", port)
 
 	return s.httpServer.ListenAndServe()
 }
