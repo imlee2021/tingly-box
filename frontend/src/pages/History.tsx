@@ -1,28 +1,10 @@
-import {
-    Box,
-    Button,
-    Chip,
-    CircularProgress,
-    FormControl,
-    FormControlLabel,
-    InputLabel,
-    MenuItem,
-    Paper,
-    Select,
-    Stack,
-    Switch,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
-    TextField,
-    Typography,
-} from '@mui/material';
+import { Box, CircularProgress } from '@mui/material';
 import { useCallback, useEffect, useState } from 'react';
 import CardGrid, { CardGridItem } from '../components/CardGrid';
 import UnifiedCard from '../components/UnifiedCard';
+import HistoryFilters from '../components/HistoryFilters';
+import HistoryStats from '../components/HistoryStats';
+import HistoryTable from '../components/HistoryTable';
 import { api } from '../services/api';
 
 const History = () => {
@@ -188,140 +170,25 @@ const History = () => {
                         subtitle="Search, filter, and export history data"
                         size="medium"
                     >
-                        <Stack spacing={3}>
-                            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-                                <TextField
-                                    fullWidth
-                                    label="Search history..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                />
-                                <FormControl fullWidth>
-                                    <InputLabel>Filter by Action</InputLabel>
-                                    <Select
-                                        value={filterType}
-                                        onChange={(e) => setFilterType(e.target.value)}
-                                        label="Filter by Action"
-                                    >
-                                        <MenuItem value="all">All Actions</MenuItem>
-                                        <MenuItem value="start_server">Start Server</MenuItem>
-                                        <MenuItem value="stop_server">Stop Server</MenuItem>
-                                        <MenuItem value="restart_server">Restart Server</MenuItem>
-                                        <MenuItem value="add_provider">Add Provider</MenuItem>
-                                        <MenuItem value="delete_provider">Delete Provider</MenuItem>
-                                        <MenuItem value="generate_token">Generate Token</MenuItem>
-                                    </Select>
-                                </FormControl>
-                                <FormControl fullWidth>
-                                    <InputLabel>Filter by Status</InputLabel>
-                                    <Select
-                                        value={filterStatus}
-                                        onChange={(e) => setFilterStatus(e.target.value)}
-                                        label="Filter by Status"
-                                    >
-                                        <MenuItem value="all">All Status</MenuItem>
-                                        <MenuItem value="true">Success</MenuItem>
-                                        <MenuItem value="false">Error</MenuItem>
-                                    </Select>
-                                </FormControl>
-                            </Stack>
-
-                            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="center">
-                                <Stack direction="row" spacing={2}>
-                                    <Button variant="outlined" onClick={loadHistory}>
-                                        Refresh
-                                    </Button>
-                                    <Button variant="contained" onClick={handleExportJSON}>
-                                        Export
-                                    </Button>
-                                </Stack>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, ml: 'auto' }}>
-                                    <FormControlLabel
-                                        control={
-                                            <Switch
-                                                checked={autoRefresh}
-                                                onChange={(e) => setAutoRefresh(e.target.checked)}
-                                                color="primary"
-                                            />
-                                        }
-                                        label="Auto Refresh"
-                                    />
-                                    <FormControl size="small" sx={{ minWidth: 120 }}>
-                                        <InputLabel>Interval</InputLabel>
-                                        <Select
-                                            value={refreshInterval}
-                                            onChange={(e) => setRefreshInterval(Number(e.target.value))}
-                                            label="Interval"
-                                            disabled={!autoRefresh}
-                                        >
-                                            <MenuItem value={10000}>10s</MenuItem>
-                                            <MenuItem value={30000}>30s</MenuItem>
-                                            <MenuItem value={60000}>1m</MenuItem>
-                                            <MenuItem value={300000}>5m</MenuItem>
-                                        </Select>
-                                    </FormControl>
-                                    {autoRefresh && (
-                                        <Chip
-                                            label="Active"
-                                            color="success"
-                                            size="small"
-                                            variant="outlined"
-                                        />
-                                    )}
-                                </Box>
-                            </Stack>
-                        </Stack>
+                        <HistoryFilters
+                            searchTerm={searchTerm}
+                            onSearchChange={setSearchTerm}
+                            filterType={filterType}
+                            onFilterTypeChange={setFilterType}
+                            filterStatus={filterStatus}
+                            onFilterStatusChange={setFilterStatus}
+                            onRefresh={loadHistory}
+                            onExport={handleExportJSON}
+                            autoRefresh={autoRefresh}
+                            onAutoRefreshChange={setAutoRefresh}
+                            refreshInterval={refreshInterval}
+                            onRefreshIntervalChange={setRefreshInterval}
+                        />
                     </UnifiedCard>
                 </CardGridItem>
 
                 {/* Statistics */}
-                <CardGridItem xs={12} sm={6} md={3}>
-                    <UnifiedCard
-                        title="Total Actions"
-                        subtitle={`${stats.total} total entries`}
-                        size="small"
-                    >
-                        <Typography variant="h3" color="primary" sx={{ textAlign: 'center' }}>
-                            {stats.total}
-                        </Typography>
-                    </UnifiedCard>
-                </CardGridItem>
-
-                <CardGridItem xs={12} sm={6} md={3}>
-                    <UnifiedCard
-                        title="Successful"
-                        subtitle={`${stats.success} successful actions`}
-                        size="small"
-                    >
-                        <Typography variant="h3" color="success.main" sx={{ textAlign: 'center' }}>
-                            {stats.success}
-                        </Typography>
-                    </UnifiedCard>
-                </CardGridItem>
-
-                <CardGridItem xs={12} sm={6} md={3}>
-                    <UnifiedCard
-                        title="Failed"
-                        subtitle={`${stats.error} failed actions`}
-                        size="small"
-                    >
-                        <Typography variant="h3" color="error.main" sx={{ textAlign: 'center' }}>
-                            {stats.error}
-                        </Typography>
-                    </UnifiedCard>
-                </CardGridItem>
-
-                <CardGridItem xs={12} sm={6} md={3}>
-                    <UnifiedCard
-                        title="Today"
-                        subtitle={`${stats.today} actions today`}
-                        size="small"
-                    >
-                        <Typography variant="h3" color="info.main" sx={{ textAlign: 'center' }}>
-                            {stats.today}
-                        </Typography>
-                    </UnifiedCard>
-                </CardGridItem>
+                <HistoryStats stats={stats} />
 
                 {/* History Table */}
                 <CardGridItem xs={12}>
@@ -330,66 +197,12 @@ const History = () => {
                         subtitle={`${filteredHistory.length} filtered entries`}
                         size="large"
                     >
-                        <Stack spacing={1}>
-                            <TableContainer component={Paper} sx={{ maxHeight: 280 }}>
-                                <Table stickyHeader size="small">
-                                    <TableHead>
-                                        <TableRow>
-                                            <TableCell>Timestamp</TableCell>
-                                            <TableCell>Action</TableCell>
-                                            <TableCell>Status</TableCell>
-                                            <TableCell>Message</TableCell>
-                                            <TableCell>Details</TableCell>
-                                        </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                        {filteredHistory.length > 0 ? (
-                                            filteredHistory.map((entry, index) => (
-                                                <TableRow key={index}>
-                                                    <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
-                                                        {new Date(entry.timestamp).toLocaleString()}
-                                                    </TableCell>
-                                                    <TableCell>{formatAction(entry.action)}</TableCell>
-                                                    <TableCell>
-                                                        <Chip
-                                                            label={entry.success ? 'Success' : 'Error'}
-                                                            color={entry.success ? 'success' : 'error'}
-                                                            size="small"
-                                                        />
-                                                    </TableCell>
-                                                    <TableCell sx={{ maxWidth: 400, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                        {entry.message}
-                                                    </TableCell>
-                                                    <TableCell sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                        {formatDetails(entry.details)}
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))
-                                        ) : (
-                                            <TableRow>
-                                                <TableCell colSpan={5} align="center">
-                                                    <Typography color="text.secondary" py={3}>
-                                                        No history found
-                                                    </Typography>
-                                                </TableCell>
-                                            </TableRow>
-                                        )}
-                                    </TableBody>
-                                </Table>
-                            </TableContainer>
-
-                            <Stack direction="row" spacing={2}>
-                                <Button variant="outlined" onClick={handleExportJSON}>
-                                    Export JSON
-                                </Button>
-                                <Button variant="outlined" onClick={handleExportCSV}>
-                                    Export CSV
-                                </Button>
-                                <Button variant="outlined" onClick={handleExportTXT}>
-                                    Export TXT
-                                </Button>
-                            </Stack>
-                        </Stack>
+                        <HistoryTable
+                            filteredHistory={filteredHistory}
+                            onExportJSON={handleExportJSON}
+                            onExportCSV={handleExportCSV}
+                            onExportTXT={handleExportTXT}
+                        />
                     </UnifiedCard>
                 </CardGridItem>
             </CardGrid>

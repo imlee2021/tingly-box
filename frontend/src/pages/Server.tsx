@@ -1,15 +1,10 @@
-import { Cancel, CheckCircle } from '@mui/icons-material';
-import {
-    Alert,
-    Box,
-    Button,
-    CircularProgress,
-    Stack,
-    Typography,
-} from '@mui/material';
+import { Alert, Box, CircularProgress } from '@mui/material';
 import { useEffect, useState } from 'react';
 import CardGrid, { CardGridItem } from '../components/CardGrid';
 import UnifiedCard from '../components/UnifiedCard';
+import ServerStatusControl from '../components/ServerStatusControl';
+import ServerConfiguration from '../components/ServerConfiguration';
+import ActivityLog from '../components/ActivityLog';
 import { api } from '../services/api';
 
 const Server = () => {
@@ -149,62 +144,14 @@ const Server = () => {
                         size="large"
                     >
                         {serverStatus ? (
-                            <Stack spacing={2}>
-                                <Stack direction="row" alignItems="center" spacing={1}>
-                                    {serverStatus.server_running ? (
-                                        <CheckCircle color="success" />
-                                    ) : (
-                                        <Cancel color="error" />
-                                    )}
-                                    <Typography variant="h6">
-                                        Status: {serverStatus.server_running ? 'Running' : 'Stopped'}
-                                    </Typography>
-                                </Stack>
-                                <Typography variant="body2">
-                                    <strong>Port:</strong> {serverStatus.port}
-                                </Typography>
-                                <Typography variant="body2">
-                                    <strong>Providers:</strong> {serverStatus.providers_enabled}/{serverStatus.providers_total}
-                                </Typography>
-                                {serverStatus.uptime && (
-                                    <Typography variant="body2">
-                                        <strong>Uptime:</strong> {serverStatus.uptime}
-                                    </Typography>
-                                )}
-                                {serverStatus.last_updated && (
-                                    <Typography variant="body2">
-                                        <strong>Last Updated:</strong> {serverStatus.last_updated}
-                                    </Typography>
-                                )}
-                                {serverStatus.request_count !== undefined && (
-                                    <Typography variant="body2">
-                                        <strong>Request Count:</strong> {serverStatus.request_count}
-                                    </Typography>
-                                )}
-                                <Stack direction="row" spacing={2} sx={{ mt: 3 }}>
-                                    <Button
-                                        variant="contained"
-                                        color="success"
-                                        onClick={handleStartServer}
-                                        disabled={serverStatus.server_running}
-                                    >
-                                        Start
-                                    </Button>
-                                    <Button
-                                        variant="contained"
-                                        color="error"
-                                        onClick={handleStopServer}
-                                        disabled={!serverStatus.server_running}
-                                    >
-                                        Stop
-                                    </Button>
-                                    <Button variant="contained" onClick={handleRestartServer}>
-                                        Restart
-                                    </Button>
-                                </Stack>
-                            </Stack>
+                            <ServerStatusControl
+                                serverStatus={serverStatus}
+                                onStartServer={handleStartServer}
+                                onStopServer={handleStopServer}
+                                onRestartServer={handleRestartServer}
+                            />
                         ) : (
-                            <Typography color="text.secondary">Loading...</Typography>
+                            <div>Loading...</div>
                         )}
                     </UnifiedCard>
                 </CardGridItem>
@@ -217,44 +164,13 @@ const Server = () => {
                         size="large"
                     >
                         {serverStatus ? (
-                            <Stack spacing={3}>
-                                <Box sx={{ p: 2, backgroundColor: 'grey.50', borderRadius: 2 }}>
-                                    <Typography variant="body2" color="text.secondary" gutterBottom>
-                                        Server Port
-                                    </Typography>
-                                    <Typography variant="body1" sx={{ fontFamily: 'monospace', fontWeight: 600 }}>
-                                        {serverStatus.port}
-                                    </Typography>
-                                </Box>
-                                <Box sx={{ p: 2, backgroundColor: 'grey.50', borderRadius: 2 }}>
-                                    <Typography variant="body2" color="text.secondary" gutterBottom>
-                                        Enabled Providers
-                                    </Typography>
-                                    <Typography variant="body1" sx={{ fontFamily: 'monospace', fontWeight: 600 }}>
-                                        {serverStatus.providers_enabled} of {serverStatus.providers_total}
-                                    </Typography>
-                                </Box>
-                                {serverStatus.action_stats && (
-                                    <Box sx={{ p: 2, backgroundColor: 'grey.50', borderRadius: 2 }}>
-                                        <Typography variant="body2" color="text.secondary" gutterBottom>
-                                            Total Actions
-                                        </Typography>
-                                        <Typography variant="body1" sx={{ fontFamily: 'monospace', fontWeight: 600 }}>
-                                            {String(Object.values(serverStatus.action_stats).reduce((a: any, b: any) => a + b, 0))}
-                                        </Typography>
-                                    </Box>
-                                )}
-                                <Stack direction="row" spacing={2}>
-                                    <Button variant="outlined" onClick={loadServerStatus}>
-                                        Refresh Status
-                                    </Button>
-                                    <Button variant="contained" onClick={handleGenerateToken}>
-                                        Generate Token
-                                    </Button>
-                                </Stack>
-                            </Stack>
+                            <ServerConfiguration
+                                serverStatus={serverStatus}
+                                onRefreshStatus={loadServerStatus}
+                                onGenerateToken={handleGenerateToken}
+                            />
                         ) : (
-                            <Typography color="text.secondary">Loading...</Typography>
+                            <div>Loading...</div>
                         )}
                     </UnifiedCard>
                 </CardGridItem>
@@ -266,56 +182,11 @@ const Server = () => {
                         subtitle={`${activityLog.length} recent activity entries`}
                         size="large"
                     >
-                        <Stack spacing={1}>
-                            <Stack direction="row" spacing={2}>
-                                <Button variant="outlined" onClick={loadActivityLog}>
-                                    Refresh Log
-                                </Button>
-                                <Button variant="outlined" onClick={clearLog}>
-                                    Clear Log
-                                </Button>
-                            </Stack>
-                            <Box
-                                sx={{
-                                    flex: 1,
-                                    backgroundColor: '#1e293b',
-                                    color: '#e2e8f0',
-                                    p: 2,
-                                    borderRadius: 2,
-                                    fontFamily: 'monospace',
-                                    fontSize: '0.75rem',
-                                    overflowY: 'auto',
-                                    border: '1px solid',
-                                    borderColor: 'divider',
-                                    minHeight: 320,
-                                }}
-                            >
-                                {activityLog.length > 0 ? (
-                                    activityLog.map((entry, index) => {
-                                        const timestamp = new Date(entry.timestamp).toLocaleString();
-                                        const isSuccess = entry.success;
-                                        return (
-                                            <Box key={index} mb={0.5}>
-                                                <Typography
-                                                    component="span"
-                                                    sx={{ color: '#64748b', fontSize: '0.75rem' }}
-                                                >
-                                                    [{timestamp}]
-                                                </Typography>{' '}
-                                                <Typography component="span" sx={{ color: isSuccess ? '#059669' : '#dc2626' }}>
-                                                    {isSuccess ? 'Success' : 'Failed'}
-                                                </Typography>{' '}
-                                                <Typography component="span">
-                                                    {entry.action}: {entry.message}
-                                                </Typography>
-                                            </Box>
-                                        );
-                                    })
-                                ) : (
-                                    <Typography color="#64748b">No recent activity</Typography>
-                                )}
-                            </Box>
-                        </Stack>
+                        <ActivityLog
+                            activityLog={activityLog}
+                            onLoadActivityLog={loadActivityLog}
+                            onClearLog={clearLog}
+                        />
                     </UnifiedCard>
                 </CardGridItem>
             </CardGrid>

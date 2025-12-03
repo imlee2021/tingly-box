@@ -1,27 +1,17 @@
 import {
     Alert,
     Box,
-    Button,
     CircularProgress,
-    Dialog,
-    DialogActions,
-    DialogContent,
-    DialogTitle,
-    FormControlLabel,
-    InputLabel,
-    MenuItem,
-    Select,
-    Stack,
-    Switch,
-    TextField,
     Typography,
-    FormControl,
+    Button,
 } from '@mui/material';
 import { Add } from '@mui/icons-material';
 import { useEffect, useState } from 'react';
 import CardGrid, { CardGridItem } from '../components/CardGrid';
 import UnifiedCard from '../components/UnifiedCard';
 import ProviderCard from '../components/ProviderCard';
+import AddProviderDialog from '../components/AddProviderDialog';
+import EditProviderDialog from '../components/EditProviderDialog';
 import { api } from '../services/api';
 
 const Providers = () => {
@@ -202,7 +192,7 @@ const Providers = () => {
                     <UnifiedCard
                         title="Current Providers"
                         subtitle={providers.length > 0 ? `Managing ${providers.length} provider(s)` : "No providers configured yet"}
-                        size="fullw"
+                        size="full"
                     >
                         {providers.length > 0 ? (
                             <Box sx={{ flex: 1 }}>
@@ -260,115 +250,36 @@ const Providers = () => {
             </CardGrid>
 
             {/* Add Dialog */}
-            <Dialog open={addDialogOpen} onClose={() => setAddDialogOpen(false)} maxWidth="sm" fullWidth>
-                <DialogTitle>Add New Provider</DialogTitle>
-                <form onSubmit={handleAddProvider}>
-                    <DialogContent>
-                        <Stack spacing={2} mt={1}>
-                            <TextField
-                                fullWidth
-                                label="Provider Name"
-                                value={providerName}
-                                onChange={(e) => setProviderName(e.target.value)}
-                                required
-                                placeholder="e.g., openai, anthropic"
-                                autoFocus
-                            />
-                            <TextField
-                                fullWidth
-                                label="API Base URL"
-                                value={providerApiBase}
-                                onChange={(e) => setProviderApiBase(e.target.value)}
-                                required
-                                placeholder="e.g., https://api.openai.com/v1"
-                            />
-                            <FormControl fullWidth>
-                                <InputLabel id="api-version-label">API Version</InputLabel>
-                                <Select
-                                    labelId="api-version-label"
-                                    value={providerApiVersion}
-                                    label="API Version"
-                                    onChange={(e) => setProviderApiVersion(e.target.value)}
-                                >
-                                    <MenuItem value="openai">OpenAI</MenuItem>
-                                    <MenuItem value="anthropic">Anthropic</MenuItem>
-                                </Select>
-                            </FormControl>
-                            <TextField
-                                fullWidth
-                                label="API Token"
-                                type="password"
-                                value={providerToken}
-                                onChange={(e) => setProviderToken(e.target.value)}
-                                required
-                                placeholder="Your API token"
-                            />
-                        </Stack>
-                    </DialogContent>
-                    <DialogActions>
-                        <Button onClick={() => setAddDialogOpen(false)}>Cancel</Button>
-                        <Button type="submit" variant="contained">Add Provider</Button>
-                    </DialogActions>
-                </form>
-            </Dialog>
+            <AddProviderDialog
+                open={addDialogOpen}
+                onClose={() => setAddDialogOpen(false)}
+                onSubmit={handleAddProvider}
+                providerName={providerName}
+                onProviderNameChange={setProviderName}
+                providerApiBase={providerApiBase}
+                onProviderApiBaseChange={setProviderApiBase}
+                providerApiVersion={providerApiVersion}
+                onProviderApiVersionChange={setProviderApiVersion}
+                providerToken={providerToken}
+                onProviderTokenChange={setProviderToken}
+            />
 
             {/* Edit Dialog */}
-            <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="sm" fullWidth>
-                <DialogTitle>Edit Provider</DialogTitle>
-                <form onSubmit={handleUpdateProvider}>
-                    <DialogContent>
-                        <Stack spacing={2} mt={1}>
-                            <TextField
-                                fullWidth
-                                label="Provider Name"
-                                value={editName}
-                                onChange={(e) => setEditName(e.target.value)}
-                                required
-                            />
-                            <TextField
-                                fullWidth
-                                label="API Base URL"
-                                value={editApiBase}
-                                onChange={(e) => setEditApiBase(e.target.value)}
-                                required
-                            />
-                            <FormControl fullWidth>
-                                <InputLabel id="edit-api-version-label">API Version</InputLabel>
-                                <Select
-                                    labelId="edit-api-version-label"
-                                    value={editApiVersion}
-                                    label="API Version"
-                                    onChange={(e) => setEditApiVersion(e.target.value)}
-                                >
-                                    <MenuItem value="openai">OpenAI</MenuItem>
-                                    <MenuItem value="anthropic">Anthropic</MenuItem>
-                                </Select>
-                            </FormControl>
-                            <TextField
-                                fullWidth
-                                label="API Token"
-                                type="password"
-                                value={editToken}
-                                onChange={(e) => setEditToken(e.target.value)}
-                                helperText="Leave empty to keep current token"
-                            />
-                            <FormControlLabel
-                                control={
-                                    <Switch
-                                        checked={editEnabled}
-                                        onChange={(e) => setEditEnabled(e.target.checked)}
-                                    />
-                                }
-                                label="Enabled"
-                            />
-                        </Stack>
-                    </DialogContent>
-                    <DialogActions>
-                        <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
-                        <Button type="submit" variant="contained">Save Changes</Button>
-                    </DialogActions>
-                </form>
-            </Dialog>
+            <EditProviderDialog
+                open={editDialogOpen}
+                onClose={() => setEditDialogOpen(false)}
+                onSubmit={handleUpdateProvider}
+                editName={editName}
+                onEditNameChange={setEditName}
+                editApiBase={editApiBase}
+                onEditApiBaseChange={setEditApiBase}
+                editApiVersion={editApiVersion}
+                onEditApiVersionChange={setEditApiVersion}
+                editToken={editToken}
+                onEditTokenChange={setEditToken}
+                editEnabled={editEnabled}
+                onEditEnabledChange={setEditEnabled}
+            />
         </Box>
     );
 };
