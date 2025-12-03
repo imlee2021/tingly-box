@@ -136,9 +136,6 @@ func (wui *WebUI) setupAPIRoutes() {
 		api.POST("/server/stop", wui.StopServer)
 		api.POST("/server/restart", wui.RestartServer)
 
-		// Token generation
-		api.GET("/token", wui.GenerateToken)
-
 		// History
 		api.GET("/history", wui.GetHistory)
 
@@ -192,9 +189,6 @@ func (wui *WebUI) SetupRoutesOnServer(mainRouter *gin.Engine) {
 		api.POST("/server/start", wui.StartServer)
 		api.POST("/server/stop", wui.StopServer)
 		api.POST("/server/restart", wui.RestartServer)
-
-		// Token generation
-		api.GET("/token", wui.GenerateToken)
 
 		// History
 		api.GET("/history", wui.GetHistory)

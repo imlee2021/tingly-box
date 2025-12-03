@@ -60,6 +60,63 @@ func (s *Server) GenerateToken(c *gin.Context) {
 		return
 	}
 
+	err = s.config.GetGlobalConfig().SetModelToken(token)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error: ErrorDetail{
+				Message: "Failed to save token: " + err.Error(),
+				Type:    "api_error",
+			},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"token": token,
+		"type":  "Bearer",
+	})
+}
+
+// GetToken handles token retrieval requests - generates a token if it doesn't exist
+func (s *Server) GetToken(c *gin.Context) {
+	globalConfig := s.config.GetGlobalConfig()
+
+	// Check if token already exists
+	if globalConfig != nil && globalConfig.HasModelToken() {
+		token := globalConfig.GetModelToken()
+		c.JSON(http.StatusOK, gin.H{
+			"token": token,
+			"type":  "Bearer",
+		})
+		return
+	}
+
+	// Generate a new token if it doesn't exist
+	// Use a default client ID for automatic token generation
+	clientID := "auto-generated"
+	token, err := s.jwtManager.GenerateToken(clientID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error: ErrorDetail{
+				Message: "Failed to generate token: " + err.Error(),
+				Type:    "api_error",
+			},
+		})
+		return
+	}
+
+	// Save the token to config
+	err = globalConfig.SetModelToken(token)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error: ErrorDetail{
+				Message: "Failed to save token: " + err.Error(),
+				Type:    "api_error",
+			},
+		})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"token": token,
 		"type":  "Bearer",

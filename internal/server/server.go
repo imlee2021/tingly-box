@@ -215,12 +215,13 @@ func (s *Server) setupRoutes() {
 		v1.POST("/chat/completions", s.ModelAuth(), s.ChatCompletions)
 	}
 
-	// Token generation endpoint (for UI and management)
-	s.router.POST("/token", s.UserAuth(), s.GenerateToken)
-
 	// Integrate Web UI routes if enabled
 	if s.webUI != nil && s.webUI.IsEnabled() {
 		s.webUI.SetupRoutesOnServer(s.router)
+
+		// Token generation endpoint (for UI and management)
+		s.router.POST("/api/token", s.UserAuth(), s.GenerateToken)
+		s.router.GET("/api/token", s.UserAuth(), s.GetToken)
 	}
 }
 
