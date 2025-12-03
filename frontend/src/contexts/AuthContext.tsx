@@ -23,23 +23,23 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [token, setToken] = useState<string | null>(() => {
-    return localStorage.getItem('auth_token');
+    return localStorage.getItem('user_auth_token');
   });
 
   const isAuthenticated = !!token;
 
   const login = (newToken: string) => {
     setToken(newToken);
-    localStorage.setItem('auth_token', newToken);
+    localStorage.setItem('user_auth_token', newToken);
   };
 
   const logout = () => {
     setToken(null);
-    localStorage.removeItem('auth_token');
+    localStorage.removeItem('user_auth_token');
   };
 
   useEffect(() => {
-    const storedToken = localStorage.getItem('auth_token');
+    const storedToken = localStorage.getItem('user_auth_token');
     if (storedToken !== token) {
       setToken(storedToken);
     }

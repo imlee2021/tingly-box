@@ -93,7 +93,7 @@ const Login: React.FC = () => {
               value={token}
               onChange={(e) => setToken(e.target.value)}
               disabled={loading}
-              helperText="Enter your JWT authentication token"
+              helperText="Enter your user authentication token for UI and management access"
             />
 
             {error && (
