@@ -46,10 +46,10 @@ const presetCardDimensions = {
   },
   header: {
     widthUnits: 28, // 520px
-    minHeightUnits: 6, // 最小高度 320px
+    minHeightUnits: 4, // 最小高度 320px
   },
   fullw:{
-        widthUnits: 28, // 520px
+    widthUnits: 28, // 520px
     minHeightUnits: 12, // 最小高度 480px
   }
 };
