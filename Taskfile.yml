@@ -109,3 +109,39 @@ tasks:
         # echo "- tingly-{{.VERSION}}-darwin-amd64.tar.gz"
         # echo "- tingly-{{.VERSION}}-darwin-arm64.tar.gz"
         # echo "- tingly-{{.VERSION}}-darwin-universal.tar.gz"
+
+  release:
+    desc: Create and push git tag from Version.txt to trigger CI release
+    cmds:
+      - |
+        # Check if Version.txt exists
+        if [ ! -f "Version.txt" ]; then
+          echo "Error: Version.txt not found!"
+          exit 1
+        fi
+
+        # Read version from file and trim whitespace
+        VERSION=$(cat Version.txt | tr -d '\n\r ')
+
+        # Validate version format
+        if [[ ! $VERSION =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "Error: Invalid version format: $VERSION"
+          echo "Expected format: v1.2.3"
+          exit 1
+        fi
+
+        # Check if tag already exists
+        if git tag | grep -q "^${VERSION}$"; then
+          echo "Error: Tag $VERSION already exists!"
+          echo "Choose a new version in Version.txt"
+          exit 1
+        fi
+
+        # Create and push tag
+        echo "Creating tag $VERSION..."
+        git tag "$VERSION"
+
+        echo "Pushing tag to origin..."
+        git push origin "$VERSION"
+
+        echo "✅ Distribution started! CI will now build and release."
