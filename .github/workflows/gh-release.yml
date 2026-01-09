@@ -191,6 +191,11 @@ jobs:
             arch: arm64
             goos: darwin
             goarch: arm64
+          - os: macos-13
+            platform: macos
+            arch: amd64
+            goos: darwin
+            goarch: amd64
           # Windows builds
           - os: windows-latest
             platform: windows
@@ -279,6 +284,8 @@ jobs:
 
       - name: Build Go binary (macOS)
         if: matrix.platform == 'macos'
+        env:
+          ARCH: ${{ matrix.arch }}
         run: |
           task darwin:package
 
@@ -286,7 +293,7 @@ jobs:
 
           cd bin
           ls -la .
-          zip -r ../dist/tingly-box-gui-macos-arm64.zip TinglyBox.app
+          zip -r ../dist/tingly-box-gui-macos-${{ matrix.arch }}.zip TinglyBox.app
           cd ..
 
           cd dist
